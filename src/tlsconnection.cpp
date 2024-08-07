@@ -1,7 +1,6 @@
 #include "tlsconnection.h"
 #include <es_sock.h>
 #include <in_sock.h>
-#include <string.h>
 
 #ifdef SYMBIAN_ENABLE_SPLIT_HEADERS
 #include <ssl_internal.h>
@@ -308,6 +307,9 @@ void CTlsConnection::Close()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::Close()")));
+	if (iMbedContext) {
+		iMbedContext->SslCloseNotify();
+	}
 }
 
 TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
