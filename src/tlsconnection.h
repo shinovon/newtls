@@ -7,6 +7,7 @@
 #include <tlsprovinterface.h> 
 #include <tlstypedef.h>
 #include <comms-infras/statemachine.h>
+#include "LOGFILE.H"
 
 class CMbedContext;
 
@@ -140,6 +141,10 @@ protected:
 	TDialogMode			iDialogMode;
 	CX509Certificate* iClientCert;
 	CX509Certificate* iServerCert;
+	
+	CGenericSecureSocket<RSocket>* iGenericSocket; // owned
+public:
+	MGenericSecureSocket* iSocket;
 protected:
 	CMbedContext* iMbedContext;
 	

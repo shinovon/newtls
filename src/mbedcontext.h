@@ -22,14 +22,16 @@ public:
 	// mbedtls_ssl_set_bio
 	void SetBio(TAny* aContext, TAny* aSend, TAny* aRecv, TAny* aTimeout);
 	
+	TInt InitSsl();
+	
 	// mbedtls_ssl_handshake
 	TInt Handshake();
 	
 	// mbedtls_ssl_read
-	TInt Read(TDes8& aDesc, TInt aLen);
+	TInt Read(unsigned char* aData, TInt aLen);
 	
 	// mbedtls_ssl_write
-	TInt Write(const TDesC8& aDesc, TInt aLen);
+	TInt Write(const unsigned char* aData, TInt aLen);
 	
 	// mbedtls_ssl_close_notify
 	TInt SslCloseNotify();

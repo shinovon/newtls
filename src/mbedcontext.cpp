@@ -25,20 +25,76 @@ void CMbedContext::SetBio(TAny* aContext, TAny* aSend, TAny* aRecv, TAny* aTimeo
 		(mbedtls_ssl_recv_timeout_t *) aTimeout);
 }
 
+TInt CMbedContext::InitSsl()
+{
+	TInt ret(0);
+	
+	if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
+									 NULL, 0)) != 0) {
+		goto exit;
+	}
+
+	if ((ret = mbedtls_ssl_config_defaults(&conf,
+											   MBEDTLS_SSL_IS_CLIENT,
+											   MBEDTLS_SSL_TRANSPORT_STREAM,
+											   MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
+		goto exit;
+	}
+	
+	
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+	
+	if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
+		goto exit;
+	}
+	
+	exit:
+	return ret;
+}
+
 TInt CMbedContext::Handshake()
 {
 	return mbedtls_ssl_handshake(&ssl);
 }
 
-TInt CMbedContext::Read(TDes8& aDesc, TInt aLen)
+TInt CMbedContext::Read(unsigned char* aData, TInt aLen)
 {
-	// TODO ??
-	return mbedtls_ssl_read(&ssl, (unsigned char*) aDesc.Ptr(), (int) aLen);
+	int r;
+	do {
+		r = mbedtls_ssl_read(&ssl, aData, static_cast<unsigned int>(aLen));
+		
+		if (r == MBEDTLS_ERR_SSL_WANT_READ ||
+			r == MBEDTLS_ERR_SSL_WANT_WRITE ||
+			r == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+			r == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+			continue;
+		}
+		if (r < 0) {
+			break;
+		}
+		break;
+	} while (1);
+	return r;
 }
 
-TInt CMbedContext::Write(const TDesC8& aDesc, TInt aLen)
+TInt CMbedContext::Write(const unsigned char* aData, TInt aLen)
 {
-	return mbedtls_ssl_write(&ssl, (const unsigned char*) aDesc.Ptr(), (int) aLen);
+	int r;
+	do {
+		r = mbedtls_ssl_write(&ssl, aData, static_cast<unsigned int>(aLen));
+		if (r == MBEDTLS_ERR_SSL_WANT_READ ||
+			r == MBEDTLS_ERR_SSL_WANT_WRITE ||
+			r == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+			r == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+			continue;
+		}
+		if (r < 0) {
+			break;
+		}
+		break;
+	} while(1);
+	return r;
 }
 
 TInt CMbedContext::SslCloseNotify()

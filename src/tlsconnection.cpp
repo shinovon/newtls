@@ -1,6 +1,7 @@
 #include "tlsconnection.h"
 #include <es_sock.h>
 #include <in_sock.h>
+#include <string.h>
 
 #ifdef SYMBIAN_ENABLE_SPLIT_HEADERS
 #include <ssl_internal.h>
@@ -22,18 +23,21 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aPro
  * @return A pointer to a newly created Secure socket object.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::NewL(1)")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
 		psa_crypto_init();
 		psaInitState = ETrue;
 	}
 #endif
+	LOG(Log::Printf(_L("=CTlsConnection::NewL(2)")));
 	
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
 	CleanupStack::PushL(self);
 	self->ConstructL(aSocket, aProtocol);
 	CleanupStack::Pop();
+	LOG(Log::Printf(_L("-CTlsConnection::NewL(2)")));
 	return self;
 }
 
@@ -47,18 +51,21 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
  * @return A pointer to a newly created Secure socket object.
  */
 {
+	LOG(Log::Printf(_L("+CTlsConnection::NewL(2)")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
 		psa_crypto_init();
 		psaInitState = ETrue;
 	}
 #endif
-	
+
+	LOG(Log::Printf(_L("=CTlsConnection::NewL(2)")));
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
 	CleanupStack::PushL(self);
 	self->ConstructL(aSocket, aProtocol);
 	CleanupStack::Pop();
+	LOG(Log::Printf(_L("-CTlsConnection::NewL(2)")));
 	return self;
 }
 
@@ -68,11 +75,13 @@ EXPORT_C void CTlsConnection::UnloadDll(TAny* /*aPtr*/)
  Does nothing in this implementation but is needed to be exported.
  */
 {
+	LOG(Log::Printf(_L("+CTlsConnection::UnloadDll()")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (psaInitState) {
 		mbedtls_psa_crypto_free();
 	}
 #endif
+	LOG(Log::Printf(_L("-CTlsConnection::UnloadDll()")));
 }
 
 CTlsConnection::~CTlsConnection()
@@ -83,6 +92,8 @@ CTlsConnection::~CTlsConnection()
  * in ~CActive).
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
+	delete iGenericSocket;
 	delete iClientCert;
 	delete iServerCert;
 	delete iMbedContext;
@@ -94,6 +105,40 @@ CTlsConnection::CTlsConnection() : CActive( EPriorityHigh )
  * Sets the Active object priority.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CTlsConnection()")));
+}
+
+LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
+{
+	LOG(Log::Printf(_L("+send_callback")));
+	CTlsConnection* s = (CTlsConnection*) ctx;
+	
+	const TPtrC8 des((const TUint8*) buf, len);
+	
+	TRequestStatus stat;
+	s->iSocket->Send(des, 0, stat);
+	User::WaitForRequest(stat);
+	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
+	LOG(Log::Printf(_L("-send_callback: %d"), ret));
+	return ret;
+}
+
+LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
+{
+	LOG(Log::Printf(_L("+recv_callback")));
+	CTlsConnection* s = (CTlsConnection*) ctx;
+	
+	
+	TPtr8 des = TPtr8(buf, len);
+
+	TRequestStatus stat;
+	s->iSocket->Recv(des, 0, stat);
+	User::WaitForRequest(stat);
+	
+	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
+	LOG(Log::Printf(_L("-recv_callback: %d"), ret));
+	if (ret == KErrEof) ret = 0;
+	return ret;
 }
 
 void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
@@ -112,11 +157,21 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
  */
 {
 
+	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(1)")));
 	CActiveScheduler::Add(this);		
-
+	
+	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
+	iSocket = iGenericSocket;
+	
+	LOG(Log::Printf(_L("A1")));
 	iMbedContext = new CMbedContext();
+	LOG(Log::Printf(_L("A2")));
+	iMbedContext->InitSsl();
+	LOG(Log::Printf(_L("A3")));
+	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
 
 	iDialogMode = EDialogModeUnattended;
+	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(1)")));
 }
 
 void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aProtocol)
@@ -135,21 +190,34 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
  */
 {
 
+	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
 	CActiveScheduler::Add(this);		
 
+	iSocket = &aSocket;
 	iMbedContext = new CMbedContext();
 	iDialogMode = EDialogModeUnattended;
+	
+	LOG(Log::Printf(_L("A1")));
+	iMbedContext = new CMbedContext();
+	LOG(Log::Printf(_L("A2")));
+	iMbedContext->InitSsl();
+	LOG(Log::Printf(_L("A3")));
+	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+
+	iDialogMode = EDialogModeUnattended;
+	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
 
 }
 
 void CTlsConnection::RunL()
 {
-
+	LOG(Log::Printf(_L("CTlsConnection::RunL()")));
 	CActiveScheduler::Stop();
 }
 
 void CTlsConnection::DoCancel()
 {
+	LOG(Log::Printf(_L("CTlsConnection::DoCancel()")));
 }
 
 
@@ -165,6 +233,7 @@ TInt CTlsConnection::AvailableCipherSuites( TDes8& aCiphers )
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::AvailableCipherSuites()")));
 	return KErrNone;
 }
 
@@ -173,6 +242,7 @@ void CTlsConnection::CancelAll()
  * Cancels all outstanding operations. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
 }
 
 void CTlsConnection::CancelHandshake()
@@ -181,6 +251,7 @@ void CTlsConnection::CancelHandshake()
  * a CancelAll() call.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CancelHandshake()")));
 }
 
 void CTlsConnection::CancelRecv()
@@ -188,6 +259,7 @@ void CTlsConnection::CancelRecv()
  * Cancels any outstanding read data operation.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CancelRecv()")));
 }
 
 void CTlsConnection::CancelSend()
@@ -195,6 +267,7 @@ void CTlsConnection::CancelSend()
  * Cancels any outstanding send data operation.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CancelSend()")));
 }
 
 const CX509Certificate* CTlsConnection::ClientCert()
@@ -209,7 +282,8 @@ const CX509Certificate* CTlsConnection::ClientCert()
  * available.
  */
 {
-		return NULL;
+	LOG(Log::Printf(_L("CTlsConnection::ClientCert()")));
+	return NULL;
 }
 
 TClientCertMode CTlsConnection::ClientCertMode()
@@ -222,6 +296,7 @@ TClientCertMode CTlsConnection::ClientCertMode()
  * is EClientCertModeIgnore.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::ClientCertMode()")));
 	return EClientCertModeIgnore;
 }
 
@@ -232,6 +307,7 @@ void CTlsConnection::Close()
  * and the socket is closed.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::Close()")));
 }
 
 TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
@@ -249,6 +325,14 @@ TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::CurrentCipherSuite()")));
+	if ( aCipherSuite.MaxLength() < 2 )
+	{
+		return KErrOverflow;
+	}
+	aCipherSuite.SetLength(2);
+	aCipherSuite[0] = 0;
+	aCipherSuite[1] = 0;
 	return KErrNone;
 }
 
@@ -259,6 +343,7 @@ TDialogMode	CTlsConnection::DialogMode()
  * @return The current dialog mode.
  */ 
 {
+	LOG(Log::Printf(_L("CTlsConnection::DialogMode()")));
 	return iDialogMode;
 }
 
@@ -279,6 +364,7 @@ void CTlsConnection::FlushSessionCache()
  * to the client.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::FlushSessionCache()")));
 }
 
 TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TDes8& aOption)
@@ -291,7 +377,8 @@ TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TDes8& aOption)
  * @return KErrNone if successful, otherwise another of the system-wide error codes.
  */
 {
-    	return KErrNotReady;
+	LOG(Log::Printf(_L("CTlsConnection::GetOpt(1)")));
+    return KErrNone;
 }
 
 TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TInt& aOption)
@@ -304,6 +391,7 @@ TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TInt& aOption)
  * @return KErrNone if successful, otherwise another of the system-wide error codes.
  */
 { 
+	LOG(Log::Printf(_L("CTlsConnection::GetOpt(2)")));
 	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
 	return GetOpt(aOptionName, aOptionLevel, optionDes);
 }
@@ -321,7 +409,10 @@ TInt CTlsConnection::Protocol(TDes& aProtocol)
  * @return An Integer value indicating the outcome of the function call.
  */
 {
-      return KErrNotReady;
+	LOG(Log::Printf(_L("CTlsConnection::Protocol()")));
+	if (aProtocol.MaxSize() < KProtocolDescMinSize) return KErrOverflow;
+	aProtocol.Copy(KProtocolVerTLS10);
+	return KErrNone;
 }
 
 void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
@@ -336,8 +427,21 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
  * more data is available for reading.
  */
 {
-
+	LOG(Log::Printf(_L("+CTlsConnection::Recv()")));
 	aDesc.Zero();
+	TRequestStatus* pStatus = &aStatus;
+	TInt res = iMbedContext->Read((unsigned char*) aDesc.Ptr(), aDesc.Size());
+	TInt ret = KErrNone;
+	if (res != 0) {
+		ret = KErrGeneral;
+		LOG(Log::Printf(_L("CTlsConnection::Recv() Err: %x"), -res));
+	}
+	if (res == 0) {
+		ret = KErrEof;
+		LOG(Log::Printf(_L("CTlsConnection::Recv() Eof")));
+	}
+	LOG(Log::Printf(_L("-CTlsConnection::Recv()")));
+	User::RequestComplete(pStatus, ret);
 }
 
 void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -354,6 +458,21 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
  * the same as the length of the returned aDesc.
  */
 {
+//	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
+//	TRequestStatus* pStatus = &aStatus;
+//	TInt res = iMbedContext->Read((unsigned char*) aDesc.Ptr(), aDesc.Size()/*1*/);
+//	TInt ret = KErrNone;
+//	if (res != 0) {
+//		ret = KErrGeneral;
+//		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Err: %x"), -res));
+//	} else if (res == 0) {
+//		ret = KErrEof;
+//		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Eof")));
+//	} else {
+//		aLen = res;
+//	}
+//	User::RequestComplete(pStatus, ret);
+	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
 }
 
 void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
@@ -369,6 +488,10 @@ void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
  * codes.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::RenegotiateHandshake()")));
+//	TRequestStatus* pStatus = &aStatus;
+//	User::RequestComplete(pStatus, KErrNotSupported);
+	StartClientHandshake(aStatus);
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
@@ -381,7 +504,16 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
  * error codes. 
  */
 {
-	
+	LOG(Log::Printf(_L("+CTlsConnection::Send(1)")));
+	TRequestStatus* pStatus = &aStatus;
+	TInt res = iMbedContext->Write(aDesc.Ptr(), aDesc.Length());
+	TInt ret = KErrNone;
+	if (res < 0) {
+		ret = KErrGeneral;
+		LOG(Log::Printf(_L("CTlsConnection::Send(1) Err: %x"), -res));
+	}
+	User::RequestComplete(pStatus, ret);
+	LOG(Log::Printf(_L("-CTlsConnection::Send(1)")));
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -395,7 +527,17 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
  * @param aLen Filled in with amount of data sent before completion 
  */
 {
-	
+	LOG(Log::Printf(_L("+CTlsConnection::Send(2)")));
+	TRequestStatus* pStatus = &aStatus;
+	TInt res = iMbedContext->Write(aDesc.Ptr(), aDesc.Length());
+	TInt ret = KErrNone;
+	if (res < 0) {
+		ret = KErrGeneral;
+		LOG(Log::Printf(_L("CTlsConnection::Send(2) Err: %x"), -res));
+	}
+	aLen = res;
+	User::RequestComplete(pStatus, ret);
+	LOG(Log::Printf(_L("-CTlsConnection::Send(2)")));
 }
 
 const CX509Certificate* CTlsConnection::ServerCert()
@@ -410,7 +552,8 @@ const CX509Certificate* CTlsConnection::ServerCert()
  * @return A pointer to the Server's certificate.
  */ 
 {
-		return NULL;
+	LOG(Log::Printf(_L("CTlsConnection::ServerCert()")));
+	return NULL;
 }
 
 TInt CTlsConnection::SetAvailableCipherSuites(const TDesC8& aCiphers)
@@ -430,7 +573,8 @@ TInt CTlsConnection::SetAvailableCipherSuites(const TDesC8& aCiphers)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
-      return KErrNotReady;
+	LOG(Log::Printf(_L("CTlsConnection::SetAvailableCipherSuites()")));
+	return KErrNone;
 }
 
 TInt CTlsConnection::SetClientCert(const CX509Certificate& /*aCert*/)
@@ -446,7 +590,8 @@ TInt CTlsConnection::SetClientCert(const CX509Certificate& /*aCert*/)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
-	return KErrNotSupported;
+	LOG(Log::Printf(_L("CTlsConnection::SetClientCert()")));
+	return KErrNone;
 }
 
 TInt CTlsConnection::SetClientCertMode(const TClientCertMode /*aClientCertMode*/)
@@ -460,7 +605,8 @@ TInt CTlsConnection::SetClientCertMode(const TClientCertMode /*aClientCertMode*/
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
-	return KErrNotSupported;
+	LOG(Log::Printf(_L("CTlsConnection::SetClientCertMode()")));
+	return KErrNone;
 }
 
 TInt CTlsConnection::SetDialogMode(const TDialogMode aDialogMode)
@@ -476,6 +622,7 @@ TInt CTlsConnection::SetDialogMode(const TDialogMode aDialogMode)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::SetDialogMode()")));
 	// This method must ensure that the dialog mode passed in is part of the 
 	// TDialogMode enum or has the value EDialogModeUnattended/EDialogModeAttended. 
 	// Otherwise, it must return KErrArgument
@@ -495,7 +642,8 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
-    	return KErrNotReady;
+	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1)")));
+    	return KErrNone;
 }
 
 TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
@@ -509,6 +657,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::SetOpt(2)")));
 	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
 	return SetOpt(aOptionName, aOptionLevel, optionDes);	
 }
@@ -536,6 +685,7 @@ TInt CTlsConnection::SetServerCert(const CX509Certificate& /*aCert*/)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::SetServerCert()")));
 	return KErrNotSupported;
 }
 
@@ -550,6 +700,16 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
  * on success (handshake negotiation complete). 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake()")));
+	TRequestStatus* pStatus = &aStatus;
+	TInt res = iMbedContext->Handshake();
+	TInt ret = KErrNone;
+	if (res != 0) {
+		ret = KErrSSLAlertHandshakeFailure;
+		LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Err %x"), -res));
+	}
+	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Success")));
+	User::RequestComplete(pStatus, ret);
 }
 
 void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
@@ -565,6 +725,7 @@ void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
  * @param aStatus On completion, any one of the system error codes, or KErrNone on success. 
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::StartServerHandshake()")));
 	TRequestStatus* pStatus = &aStatus;
 
 	User::RequestComplete( pStatus, KErrNotSupported );
@@ -578,6 +739,7 @@ TBool CTlsConnection::OnCompletion( CStateMachine* aStateMachine )
  * Called only when negotiation or renegotiation has completed.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::OnCompletion()")));
 	return ETrue;
 }
 
