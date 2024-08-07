@@ -1,0 +1,6 @@
+*.sis
+*.d
+*.bat
+.cproject
+.project
+/.settings
