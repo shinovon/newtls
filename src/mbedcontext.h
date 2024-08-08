@@ -27,6 +27,9 @@ public:
 	// mbedtls_ssl_handshake
 	TInt Handshake();
 	
+	// mbedtls_ssl_renegotiate
+//	TInt Renegotiate();
+	
 	// mbedtls_ssl_read
 	TInt Read(unsigned char* aData, TInt aLen);
 	

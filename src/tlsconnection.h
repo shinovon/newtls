@@ -8,6 +8,7 @@
 #include <tlstypedef.h>
 #include <comms-infras/statemachine.h>
 #include "LOGFILE.H"
+#include "tlsevents.h"
 
 class CMbedContext;
 
@@ -118,14 +119,13 @@ public:
 
 	// MStateMachineNotify interface
 	virtual TBool OnCompletion(CStateMachine* aStateMachine); 
+	
+	CMbedContext& MbedContext();
+	CRecvEvent& RecvEvent();
+	MGenericSecureSocket& Socket();
    
-	CMbedContext&				MbedContext();
-
-	// Retrieve or confirm the Connection states
-	TBool IsHandshaking() const;
-	TBool IsReNegotiating() const;
-	TBool IsInDataMode() const;
-	TBool IsIdle() const;
+	void DoneReading();
+	void ReadEof();
 
 	// Methods from CActive
 	void RunL();
@@ -148,11 +148,42 @@ public:
 protected:
 	CMbedContext* iMbedContext;
 	
+	CRecvData* iRecvData;
+//	CSendData* iSendData;
+
+	CRecvEvent* iRecvEvent;
+	
+	TBool iReceivingData;
+	TBool iSendingData;
+	TBool iHandshaked;
+	
+	TBool iReadEof;
+	
 };
 
 inline CMbedContext& CTlsConnection::MbedContext()
 {
 	return *iMbedContext;
+}
+
+inline CRecvEvent& CTlsConnection::RecvEvent()
+{
+	return *iRecvEvent;
+}
+
+inline MGenericSecureSocket& CTlsConnection::Socket()
+{
+	return *iSocket;
+}
+
+inline void CTlsConnection::DoneReading()
+{
+	iReceivingData = EFalse;
+}
+
+inline void CTlsConnection::ReadEof()
+{
+	iReadEof = true;
 }
 
 #endif

@@ -92,13 +92,37 @@ CTlsConnection::~CTlsConnection()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
-	delete iGenericSocket;
-	delete iClientCert;
-	delete iServerCert;
-	delete iMbedContext;
+	if (iGenericSocket) {
+		delete iGenericSocket;
+		iGenericSocket = NULL;
+	}
+	if (iRecvData) {
+		delete iRecvData;
+		iRecvData = NULL;
+	}
+	if (iRecvEvent) {
+		delete iRecvEvent;
+		iRecvEvent = NULL;
+	}
+	if (iClientCert) {
+		delete iClientCert;
+		iClientCert = NULL;
+	}
+	if (iServerCert) {
+		delete iServerCert;
+		iServerCert = NULL;
+	}
+	if (iMbedContext) {
+		delete iMbedContext;
+		iMbedContext = NULL;
+	}
 }
 
-CTlsConnection::CTlsConnection() : CActive( EPriorityHigh )
+CTlsConnection::CTlsConnection() :
+  CActive( EPriorityHigh ),
+  iReceivingData(EFalse),
+  iSendingData(EFalse),
+  iHandshaked(EFalse)
 /**
  * Constructor .
  * Sets the Active object priority.
@@ -107,38 +131,39 @@ CTlsConnection::CTlsConnection() : CActive( EPriorityHigh )
 	LOG(Log::Printf(_L("CTlsConnection::CTlsConnection()")));
 }
 
-LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
-{
-	LOG(Log::Printf(_L("+send_callback")));
-	CTlsConnection* s = (CTlsConnection*) ctx;
-	
-	const TPtrC8 des((const TUint8*) buf, len);
-	
-	TRequestStatus stat;
-	s->iSocket->Send(des, 0, stat);
-	User::WaitForRequest(stat);
-	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
-	LOG(Log::Printf(_L("-send_callback: %d"), ret));
-	return ret;
-}
-
-LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
-{
-	LOG(Log::Printf(_L("+recv_callback")));
-	CTlsConnection* s = (CTlsConnection*) ctx;
-	
-	
-	TPtr8 des = TPtr8(buf, len);
-
-	TRequestStatus stat;
-	s->iSocket->Recv(des, 0, stat);
-	User::WaitForRequest(stat);
-	
-	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
-	LOG(Log::Printf(_L("-recv_callback: %d"), ret));
-	if (ret == KErrEof) ret = 0;
-	return ret;
-}
+//LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
+//{
+//	LOG(Log::Printf(_L("+send_callback")));
+//	CTlsConnection* s = (CTlsConnection*) ctx;
+//	
+//	const TPtrC8 des((const TUint8*) buf, len);
+//	
+//	TRequestStatus stat;
+//	s->iSocket->Send(des, 0, stat);
+//	User::WaitForRequest(stat);
+//	
+//	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
+//	LOG(Log::Printf(_L("-send_callback: %d"), ret));
+//	return ret;
+//}
+//
+//LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
+//{
+//	LOG(Log::Printf(_L("+recv_callback")));
+//	CTlsConnection* s = (CTlsConnection*) ctx;
+//	
+//	TPtr8 des = TPtr8(buf, len);
+//
+//	TRequestStatus stat;
+//	s->iSocket->Recv(des, 0, stat);
+//	LOG(Log::Printf(_L("recv_callback: wait")));
+//	User::WaitForRequest(stat);
+//	
+//	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
+//	LOG(Log::Printf(_L("-recv_callback: %d"), ret));
+//	if (ret == KErrEof) ret = 0;
+//	return ret;
+//}
 
 void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 /** 
@@ -162,12 +187,12 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
 	iSocket = iGenericSocket;
 	
-	LOG(Log::Printf(_L("A1")));
 	iMbedContext = new CMbedContext();
-	LOG(Log::Printf(_L("A2")));
 	iMbedContext->InitSsl();
-	LOG(Log::Printf(_L("A3")));
-	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+//	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, aSocket);
+	iRecvData = CRecvData::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;
 	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(1)")));
@@ -189,22 +214,23 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
  */
 {
 
-	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
-	CActiveScheduler::Add(this);		
-
-	iSocket = &aSocket;
-	iMbedContext = new CMbedContext();
-	iDialogMode = EDialogModeUnattended;
+//	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
+//	CActiveScheduler::Add(this);		
+//
+//	iSocket = &aSocket;
+//	
+//	iMbedContext = new CMbedContext();
+//	iMbedContext->InitSsl();
+////	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+//
+//	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iSocket);
+//	iRecvData = CRecvData::NewL(*this);
+//
+//	iDialogMode = EDialogModeUnattended;
+//	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
 	
-	LOG(Log::Printf(_L("A1")));
-	iMbedContext = new CMbedContext();
-	LOG(Log::Printf(_L("A2")));
-	iMbedContext->InitSsl();
-	LOG(Log::Printf(_L("A3")));
-	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
-
-	iDialogMode = EDialogModeUnattended;
-	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
+	LOG(Log::Printf(_L("CTlsConnection::ConstructL(2) Not supported")));
+	User::Leave(KErrNotSupported);
 
 }
 
@@ -242,6 +268,8 @@ void CTlsConnection::CancelAll()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
+
+	CancelRecv();
 }
 
 void CTlsConnection::CancelHandshake()
@@ -251,6 +279,7 @@ void CTlsConnection::CancelHandshake()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelHandshake()")));
+	CancelAll();
 }
 
 void CTlsConnection::CancelRecv()
@@ -259,6 +288,12 @@ void CTlsConnection::CancelRecv()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelRecv()")));
+	iSocket->CancelRead();
+	iSocket->CancelRecv();
+
+	if (iRecvData) {
+		iRecvData->Cancel(KErrNone);
+	}
 }
 
 void CTlsConnection::CancelSend()
@@ -267,6 +302,7 @@ void CTlsConnection::CancelSend()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelSend()")));
+	// TODO
 }
 
 const CX509Certificate* CTlsConnection::ClientCert()
@@ -307,8 +343,12 @@ void CTlsConnection::Close()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::Close()")));
+	CancelAll();
 	if (iMbedContext) {
 		iMbedContext->SslCloseNotify();
+	}
+	if (iSocket) {
+		iSocket->Close();
 	}
 }
 
@@ -328,8 +368,7 @@ TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CurrentCipherSuite()")));
-	if ( aCipherSuite.MaxLength() < 2 )
-	{
+	if ( aCipherSuite.MaxLength() < 2 ) {
 		return KErrOverflow;
 	}
 	aCipherSuite.SetLength(2);
@@ -430,20 +469,39 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
  */
 {
 	LOG(Log::Printf(_L("+CTlsConnection::Recv()")));
-	aDesc.Zero();
 	TRequestStatus* pStatus = &aStatus;
-	TInt res = iMbedContext->Read((unsigned char*) aDesc.Ptr(), aDesc.Size());
-	TInt ret = KErrNone;
-	if (res != 0) {
-		ret = KErrGeneral;
-		LOG(Log::Printf(_L("CTlsConnection::Recv() Err: %x"), -res));
+	if (!iHandshaked || !iRecvData) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return;
 	}
-	if (res == 0) {
-		ret = KErrEof;
-		LOG(Log::Printf(_L("CTlsConnection::Recv() Eof")));
+	if (iReceivingData) {
+		LOG(Log::Printf(_L("CTlsConnection::Recv() Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
 	}
+	iReceivingData = ETrue;
+	aDesc.Zero();
+
+	iRecvEvent->SetData(&aDesc);
+	iRecvEvent->SetMaxLength(aDesc.MaxLength());
+
+	iRecvData->ResumeL(*this); 
+	iRecvData->Start(pStatus, this);
+	iRecvData->SetSockXfrLength( NULL );
+	
 	LOG(Log::Printf(_L("-CTlsConnection::Recv()")));
-	User::RequestComplete(pStatus, ret);
+	
+//	TInt res = iMbedContext->Read((unsigned char*) aDesc.Ptr(), aDesc.Size());
+//	TInt ret = KErrNone;
+//	if (res != 0) {
+//		ret = KErrGeneral;
+//		LOG(Log::Printf(_L("CTlsConnection::Recv() Err: %x"), -res));
+//	}
+//	if (res == 0) {
+//		ret = KErrEof;
+//		LOG(Log::Printf(_L("CTlsConnection::Recv() Eof")));
+//	}
+//	User::RequestComplete(pStatus, ret);
 }
 
 void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -460,8 +518,32 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
  * the same as the length of the returned aDesc.
  */
 {
-//	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
-//	TRequestStatus* pStatus = &aStatus;
+	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
+	TRequestStatus* pStatus = &aStatus;
+	if (!iHandshaked || !iRecvData) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return;
+	}
+	if (iReceivingData) {
+		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	if (iReadEof) {
+		User::RequestComplete(pStatus, KErrEof);
+		return;
+	}
+	iReceivingData = ETrue;
+
+	iRecvEvent->SetData(&aDesc);
+	iRecvEvent->SetMaxLength(aDesc.MaxLength());
+
+	iRecvData->ResumeL(*this);
+	iRecvData->Start(pStatus, this);
+	iRecvData->SetSockXfrLength( &aLen() );
+	
+	LOG(Log::Printf(_L("-CTlsConnection::RecvOneOrMore()")));
+	
 //	TInt res = iMbedContext->Read((unsigned char*) aDesc.Ptr(), aDesc.Size()/*1*/);
 //	TInt ret = KErrNone;
 //	if (res != 0) {
@@ -474,7 +556,6 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 //		aLen = res;
 //	}
 //	User::RequestComplete(pStatus, ret);
-	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
 }
 
 void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
@@ -506,14 +587,21 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
  * error codes. 
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::Send(1)")));
 	TRequestStatus* pStatus = &aStatus;
+	if (iSendingData) {
+		LOG(Log::Printf(_L("CTlsConnection::Send(1) Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	iSendingData = ETrue;
+	LOG(Log::Printf(_L("+CTlsConnection::Send(1)")));
 	TInt res = iMbedContext->Write(aDesc.Ptr(), aDesc.Length());
 	TInt ret = KErrNone;
 	if (res < 0) {
 		ret = KErrGeneral;
 		LOG(Log::Printf(_L("CTlsConnection::Send(1) Err: %x"), -res));
 	}
+	iSendingData = EFalse;
 	User::RequestComplete(pStatus, ret);
 	LOG(Log::Printf(_L("-CTlsConnection::Send(1)")));
 }
@@ -529,8 +617,14 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
  * @param aLen Filled in with amount of data sent before completion 
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::Send(2)")));
 	TRequestStatus* pStatus = &aStatus;
+	if (iSendingData) {
+		LOG(Log::Printf(_L("CTlsConnection::Send(1) Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	iSendingData = ETrue;
+	LOG(Log::Printf(_L("+CTlsConnection::Send(2)")));
 	TInt res = iMbedContext->Write(aDesc.Ptr(), aDesc.Length());
 	TInt ret = KErrNone;
 	if (res < 0) {
@@ -538,6 +632,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
 		LOG(Log::Printf(_L("CTlsConnection::Send(2) Err: %x"), -res));
 	}
 	aLen = res;
+	iSendingData = EFalse;
 	User::RequestComplete(pStatus, ret);
 	LOG(Log::Printf(_L("-CTlsConnection::Send(2)")));
 }
@@ -645,7 +740,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1)")));
-    	return KErrNone;
+    return KErrNone;
 }
 
 TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
@@ -711,6 +806,7 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
 		LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Err %x"), -res));
 	}
 	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Success")));
+	iHandshaked = ETrue;
 	User::RequestComplete(pStatus, ret);
 }
 
@@ -741,7 +837,10 @@ TBool CTlsConnection::OnCompletion( CStateMachine* aStateMachine )
  * Called only when negotiation or renegotiation has completed.
  */
 {
+	if (iReadEof) {
+		return ETrue;
+	}
 	LOG(Log::Printf(_L("CTlsConnection::OnCompletion()")));
-	return ETrue;
+	return EFalse;
 }
 

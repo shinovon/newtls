@@ -58,6 +58,11 @@ TInt CMbedContext::Handshake()
 	return mbedtls_ssl_handshake(&ssl);
 }
 
+//TInt CMbedContext::Renegotiate()
+//{
+//	return mbedtls_ssl_renegotiate(&ssl);
+//}
+
 TInt CMbedContext::Read(unsigned char* aData, TInt aLen)
 {
 	int r;
@@ -76,6 +81,8 @@ TInt CMbedContext::Read(unsigned char* aData, TInt aLen)
 		break;
 	} while (1);
 	return r;
+	
+//	return mbedtls_ssl_read(&ssl, aData, static_cast<unsigned int>(aLen));
 }
 
 TInt CMbedContext::Write(const unsigned char* aData, TInt aLen)
