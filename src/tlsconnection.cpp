@@ -741,17 +741,18 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 			ret = KErrNone;
 			break;
 			}
-		case KSoPskConfig:
-			{
-			ret = KErrNone;
-			break;
-			}
-		case KSoServerNameIndication:
-			{
-			ret = KErrNone;
-			break;
-			}
+//		case KSoPskConfig:
+//			{
+//			ret = KErrNone;
+//			break;
+//			}
+//		case KSoServerNameIndication:
+//			{
+//			ret = KErrNone;
+//			break;
+//			}
 		default:
+			ret = KErrNone;
 			break;
 		}
 		break;

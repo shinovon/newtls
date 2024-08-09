@@ -1,15 +1,6 @@
-/*
-============================================================================
- Name		: bld.inf
- Author	  : 
- Copyright   : 
- Description : This file provides the information required for building the
-				whole of a newtls.
-============================================================================
-*/
-
 PRJ_PLATFORMS
 DEFAULT
 
 PRJ_MMPFILES
 newtls.mmp
+//newtls93.mmp

@@ -29,21 +29,21 @@ VENDORID 0x70000001
 NOEXPORTLIBRARY  /* Ensures that DEF file can be safely shared 
                     for RVCT builds */  
 
-#include <comms-infras/commsdebugutility.mmh> 
 SOURCEPATH	../src     // SSL source code
 SOURCE        tlsconnection.cpp
 SOURCE	      mbedcontext.cpp tlsevents.cpp
 
 USERINCLUDE	../../tlsprovider/inc
-USERINCLUDE   ../../tls/secsock
+USERINCLUDE ../../tls/secsock
 USERINCLUDE	../protocol
-USERINCLUDE 	../inc
+USERINCLUDE ../inc
 
 LIBRARY		euser.lib
 LIBRARY		esock.lib
 LIBRARY		insock.lib
 LIBRARY		netsm.lib
-LIBRARY		netmsg.lib
+//LIBRARY		netmsg.lib
+LIBRARY		netms1.lib
 
 LIBRARY mbedtls.lib
 //LIBRARY libc.lib

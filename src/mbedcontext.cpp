@@ -56,9 +56,6 @@ TInt CMbedContext::InitSsl()
 TInt CMbedContext::Handshake()
 {
 	int ret(0);
-//	if ((ret = mbedtls_ssl_set_hostname(&ssl, (const char*) _S("46.19.68.253"))) != 0) {
-//		goto exit;
-//	}
 	
 	while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
 		if (ret == MBEDTLS_ERR_SSL_WANT_READ ||
@@ -71,7 +68,6 @@ TInt CMbedContext::Handshake()
 		break;
 	}
 	
-	exit:
 	return ret;
 }
 

@@ -26,7 +26,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	
 	if (s->iReadState == 0 || s->iReadState == 2) {
 		TRequestStatus stat;
-		s->iSocket.RecvOneOrMore(des, 0, stat);
+		s->iSocket.Recv(des, 0, stat);
 		User::WaitForRequest(stat);
 		
 		TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
@@ -191,23 +191,6 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			ret = KErrEof;
 			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
 			break;
-		}
-		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-			if (iReadIdx >= iPtrHBuf.Length()) {
-				iReadState = 0;
-				LOG(Log::Printf(_L("ReadState 1 RepeatA")));
-			} else {
-				iReadState = 1;
-				LOG(Log::Printf(_L("ReadState 1 RepeatB")));
-			}
-			User::RequestComplete(pStatus, KErrNone);
-			return this;
-		}
-		if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
-			iReadState = 1;
-			LOG(Log::Printf(_L("ReadState 1 RepeatC")));
-			User::RequestComplete(pStatus, KErrNone);
-			return this;
 		}
 		if (res < 0) {
 			ret = res;
