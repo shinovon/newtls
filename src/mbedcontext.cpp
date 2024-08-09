@@ -55,7 +55,24 @@ TInt CMbedContext::InitSsl()
 
 TInt CMbedContext::Handshake()
 {
-	return mbedtls_ssl_handshake(&ssl);
+	int ret(0);
+//	if ((ret = mbedtls_ssl_set_hostname(&ssl, (const char*) _S("46.19.68.253"))) != 0) {
+//		goto exit;
+//	}
+	
+	while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
+		if (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+			ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
+			ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+			ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
+			continue;
+		}
+			
+		break;
+	}
+	
+	exit:
+	return ret;
 }
 
 //TInt CMbedContext::Renegotiate()

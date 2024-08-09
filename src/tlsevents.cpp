@@ -6,7 +6,6 @@
 
 LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 {
-	LOG(Log::Printf(_L("+send_callback")));
 	CRecvEvent* s = (CRecvEvent*) ctx;
 	
 	const TPtrC8 des((const TUint8*) buf, len);
@@ -16,49 +15,28 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 	User::WaitForRequest(stat);
 	
 	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
-	LOG(Log::Printf(_L("-send_callback: %d"), ret));
 	return ret;
 }
 
 LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
-	LOG(Log::Printf(_L("+recv_callback")));
 	CRecvEvent* s = (CRecvEvent*) ctx;
 	
 	TPtr8 des = TPtr8(buf, len);
 	
-//	if (s->iReadState == 0) {
-	TRequestStatus stat;
-	s->iSocket.RecvOneOrMore(des, 0, stat);
-	LOG(Log::Printf(_L("recv_callback: wait")));
-	User::WaitForRequest(stat);
+	if (s->iReadState == 0 || s->iReadState == 2) {
+		TRequestStatus stat;
+		s->iSocket.RecvOneOrMore(des, 0, stat);
+		User::WaitForRequest(stat);
+		
+		TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
+		if (ret == KErrEof) ret = 0;
+		return ret;
+	}
 	
-	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
-	LOG(Log::Printf(_L("-recv_callback: %d"), ret));
-	if (ret == KErrEof) ret = 0;
-	return ret;
-//	}
-//	
-//	TInt maxLen = s->iPtrHBuf.Length();
-//	TInt readIdx = s->iReadIdx;
-//	TInt resLen = len;
-//	if (readIdx >= maxLen) {
-//		LOG(Log::Printf(_L("-recv_callback fail 1")));
-//		return -1;
-//	}
-//
-//	const TUint8* ptr = s->iPtrHBuf.Ptr();
-//	ptr += readIdx;
-//	
-//	if (resLen > maxLen-readIdx) {
-//		resLen = maxLen-readIdx;
-//	}
-//	
-//	s->iReadIdx += resLen;
-//	
-//	des.Copy(ptr, resLen);
-//	LOG(Log::Printf(_L("-recv_callback g")));
-//	return resLen;
+	des.Copy(s->iPtrHBuf);
+	s->iReadState = 2;
+	return len;
 }
 
 CRecvData* CRecvData::NewL( CTlsConnection& aTlsConnection )
@@ -100,6 +78,7 @@ void CRecvData::Suspend()
 void CRecvData::ResumeL( CTlsConnection& aTlsConnection )
 {
 	LOG(Log::Printf(_L("+CRecvData::ResumeL()")));
+	iRecvEvent.Set(this);
 	if (!iActiveEvent) {
 		iActiveEvent = &iRecvEvent;
 	}
@@ -114,11 +93,12 @@ void CRecvData::OnCompletion()
 		if (pData) {
 			if (iSockXfrLength && pData->Length()) {
 				*iSockXfrLength = pData->Length();
-			} else if (pData->Length() < pData->MaxLength()) {
-				iActiveEvent = &iRecvEvent;
-				Start(iClientStatus, iStateMachineNotify);
-				return;
 			}
+//			else if (pData->Length() < pData->MaxLength()) {
+//				iActiveEvent = &iRecvEvent;
+//				Start(iClientStatus, iStateMachineNotify);
+//				return;
+//			}
 		}
 	}
 	
@@ -172,72 +152,72 @@ void CRecvEvent::CancelAll()
 	
 }
 
+void CRecvEvent::Set(CStateMachine* aStateMachine)
+{
+	iStateMachine = aStateMachine;
+	if (!iDataIn) {
+		iDataIn = HBufC8::NewL( 4096 );
+	}
+	iReadState = 0;
+}
+
 CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 {
 	LOG(Log::Printf(_L("+CRecvEvent::ProcessL()")));
 	TRequestStatus* pStatus = &aStatus;
 	
-//	if (!iDataIn) {
-//		iDataIn = HBufC8::NewL( 4096 );
-//	}
 	TInt ret = KErrNone;
-//	switch (iReadState) {
-//	case 0:
-//	{
-//		LOG(Log::Printf(_L("ReadState 0")));
-//		iPtrHBuf.Set( (TUint8*)iDataIn->Des().Ptr(), 0, 3072 );
-//		TSockXfrLength len;
-//		iSocket.RecvOneOrMore(iPtrHBuf, 0, aStatus, len);
-//		iReadIdx = 0;
-//		iReadState = 1;
-//		return this;
-//	}
-//	case 1:
-//	{
-//		if (iStateMachine->LastError() != KErrNone) {
-//			LOG(Log::Printf(_L("ReadState 1 Return Err")));
-//			User::RequestComplete(pStatus, ret);
-//			return NULL;
-//		}
-//		LOG(Log::Printf(_L("ReadState 1")));
-//		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr(), iData->MaxLength());
-//		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-//			ret = KErrEof;
-//			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
-//			break;
-//		}
-//		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-//			if (iReadIdx >= iPtrHBuf.Length()) {
-//				iReadState = 0;
-//				LOG(Log::Printf(_L("ReadState 1 RepeatA")));
-//			} else {
-//				iReadState = 1;
-//				LOG(Log::Printf(_L("ReadState 1 RepeatB")));
-//			}
-//			User::RequestComplete(pStatus, KErrNone);
-//			return this;
-//		}
-//		if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
-//			iReadState = 1;
-//			LOG(Log::Printf(_L("ReadState 1 RepeatC")));
-//			User::RequestComplete(pStatus, KErrNone);
-//			return this;
-//		}
-//		if (res < 0) {
-//			ret = KErrGeneral;
-//			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Err: %x"), -res));
-//			break;
-//		}
-//	}
-//	break;
-//	}
-	TInt res = iMbedContext.Read((unsigned char*) iData->Ptr(), iData->MaxLength());
-	if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-		ret = KErrEof;
-		LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
-	} else if (res < 0) {
-		ret = KErrGeneral;
-		LOG(Log::Printf(_L("CRecvEvent::ProcessL() Err: %x"), -res));
+	switch (iReadState) {
+	case 0:
+	{
+		LOG(Log::Printf(_L("ReadState 0")));
+		iPtrHBuf.Set( (TUint8*)iDataIn->Des().Ptr(), 0, 5 );
+		TSockXfrLength len;
+		iSocket.Recv(iPtrHBuf, 0, aStatus);
+		iReadIdx = 0;
+		iReadState = 1;
+		return this;
+	}
+	case 1:
+	{
+		if (iStateMachine->LastError() != KErrNone) {
+			LOG(Log::Printf(_L("ReadState 1 Return Err")));
+			User::RequestComplete(pStatus, ret);
+			return NULL;
+		}
+		LOG(Log::Printf(_L("ReadState 1")));
+		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr(), iData->MaxLength());
+		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+			ret = KErrEof;
+			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
+			break;
+		}
+		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
+			if (iReadIdx >= iPtrHBuf.Length()) {
+				iReadState = 0;
+				LOG(Log::Printf(_L("ReadState 1 RepeatA")));
+			} else {
+				iReadState = 1;
+				LOG(Log::Printf(_L("ReadState 1 RepeatB")));
+			}
+			User::RequestComplete(pStatus, KErrNone);
+			return this;
+		}
+		if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+			iReadState = 1;
+			LOG(Log::Printf(_L("ReadState 1 RepeatC")));
+			User::RequestComplete(pStatus, KErrNone);
+			return this;
+		}
+		if (res < 0) {
+			ret = res;
+			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Err: %x"), -res));
+			break;
+		}
+
+		iData->SetLength(res);
+	}
+	break;
 	}
 	
 	User::RequestComplete(pStatus, ret);

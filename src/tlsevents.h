@@ -72,6 +72,7 @@ public:
 	void SetMaxLength(TInt aLen);
 	
 	void CancelAll();
+	void Set(CStateMachine* aStateMachine);
 	
 	TDes8* Data();
 	

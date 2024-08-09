@@ -131,40 +131,6 @@ CTlsConnection::CTlsConnection() :
 	LOG(Log::Printf(_L("CTlsConnection::CTlsConnection()")));
 }
 
-//LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
-//{
-//	LOG(Log::Printf(_L("+send_callback")));
-//	CTlsConnection* s = (CTlsConnection*) ctx;
-//	
-//	const TPtrC8 des((const TUint8*) buf, len);
-//	
-//	TRequestStatus stat;
-//	s->iSocket->Send(des, 0, stat);
-//	User::WaitForRequest(stat);
-//	
-//	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
-//	LOG(Log::Printf(_L("-send_callback: %d"), ret));
-//	return ret;
-//}
-//
-//LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
-//{
-//	LOG(Log::Printf(_L("+recv_callback")));
-//	CTlsConnection* s = (CTlsConnection*) ctx;
-//	
-//	TPtr8 des = TPtr8(buf, len);
-//
-//	TRequestStatus stat;
-//	s->iSocket->Recv(des, 0, stat);
-//	LOG(Log::Printf(_L("recv_callback: wait")));
-//	User::WaitForRequest(stat);
-//	
-//	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
-//	LOG(Log::Printf(_L("-recv_callback: %d"), ret));
-//	if (ret == KErrEof) ret = 0;
-//	return ret;
-//}
-
 void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 /** 
  * Two-phase constructor.
@@ -186,6 +152,7 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 	
 	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
 	iSocket = iGenericSocket;
+//	aSocket.SetOpt(KSONonBlockingIO, KSOLSocket, 0);
 	
 	iMbedContext = new CMbedContext();
 	iMbedContext->InitSsl();
@@ -418,7 +385,10 @@ TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TDes8& aOption)
  * @return KErrNone if successful, otherwise another of the system-wide error codes.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::GetOpt(1)")));
+	LOG(Log::Printf(_L("CTlsConnection::GetOpt(1): %d %d"), aOptionName, aOptionLevel));
+	if (aOptionLevel != KSolInetSSL) {
+		return Socket().GetOpt(aOptionName, aOptionLevel, aOption);
+	}
     return KErrNone;
 }
 
@@ -518,7 +488,7 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
  * the same as the length of the returned aDesc.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore()")));
+	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore(): %d"), aDesc.MaxLength()));
 	TRequestStatus* pStatus = &aStatus;
 	if (!iHandshaked || !iRecvData) {
 		User::RequestComplete(pStatus, KErrNotReady);
@@ -534,6 +504,7 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 		return;
 	}
 	iReceivingData = ETrue;
+	aDesc.Zero();
 
 	iRecvEvent->SetData(&aDesc);
 	iRecvEvent->SetMaxLength(aDesc.MaxLength());
@@ -739,8 +710,61 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1)")));
-    return KErrNone;
+	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1): %d %d"), aOptionName, aOptionLevel));
+	TInt ret=KErrNotSupported;
+	switch(aOptionLevel)
+	{
+	case KSolInetSSL:		// This is the only supported option level in SSL/TLS
+	{
+		switch (aOptionName)
+		{
+		case KSoSSLDomainName:		
+			{
+			ret = KErrNone;
+			break;
+			}
+		case KSoDialogMode:
+			{
+			
+			TDialogMode dialogMode = (TDialogMode) ( *(TUint*)aOption.Ptr() );
+			ret = SetDialogMode(dialogMode);
+			
+			break;
+			}
+		case KSoUseSSLv2Handshake:
+			{
+			ret = KErrNone;
+			break;
+			}
+		case KSoEnableNullCiphers:
+			{
+			ret = KErrNone;
+			break;
+			}
+		case KSoPskConfig:
+			{
+			ret = KErrNone;
+			break;
+			}
+		case KSoServerNameIndication:
+			{
+			ret = KErrNone;
+			break;
+			}
+		default:
+			break;
+		}
+		break;
+	}
+	default:	// Not a supported SSL option, call RSocket::SetOpt directly
+	{
+		LOG(Log::Printf(_L("Default option level (not supported by protocol)")));
+		ret = Socket().SetOpt(aOptionName, aOptionLevel, aOption);
+
+		break;
+	}
+	}
+    return ret;
 }
 
 TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
@@ -771,6 +795,7 @@ TInt CTlsConnection::SetProtocol(const TDesC& aProtocol)
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
+	LOG(Log::Printf(_L("CTlsConnection::SetProtocol()")));
 	return KErrNone;
 }
 
