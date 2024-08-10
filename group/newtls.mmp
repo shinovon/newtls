@@ -35,15 +35,14 @@ SOURCE        tlsconnection.cpp
 SOURCE	      mbedcontext.cpp tlsevents.cpp
 
 USERINCLUDE	../../tlsprovider/inc
-USERINCLUDE   ../../tls/secsock
+USERINCLUDE ../../tls/secsock
 USERINCLUDE	../protocol
-USERINCLUDE 	../inc
+USERINCLUDE ../inc
 
 LIBRARY		euser.lib
 LIBRARY		esock.lib
 LIBRARY		insock.lib
 LIBRARY		netsm.lib
-LIBRARY		netmsg.lib
 
 LIBRARY mbedtls.lib
 //LIBRARY libc.lib
