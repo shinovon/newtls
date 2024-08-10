@@ -122,9 +122,11 @@ public:
 	
 	CMbedContext& MbedContext();
 	CRecvEvent& RecvEvent();
+	CSendEvent& SendEvent();
 	MGenericSecureSocket& Socket();
    
 	void DoneReading();
+	void DoneSending();
 	void ReadEof();
 
 	// Methods from CActive
@@ -137,6 +139,8 @@ protected:
 	CTlsConnection(); 
 	void ConstructL(RSocket& aSocket, const TDesC& aProtocol);
 	void ConstructL(MGenericSecureSocket& aSocket, const TDesC& aProtocol);
+	
+	void Init();
 protected:
 	TDialogMode			iDialogMode;
 	CX509Certificate* iClientCert;
@@ -149,9 +153,10 @@ protected:
 	CMbedContext* iMbedContext;
 	
 	CRecvData* iRecvData;
-//	CSendData* iSendData;
-
 	CRecvEvent* iRecvEvent;
+	
+	CSendData* iSendData;
+	CSendEvent* iSendEvent;
 	
 	TBool iReceivingData;
 	TBool iSendingData;
@@ -171,6 +176,11 @@ inline CRecvEvent& CTlsConnection::RecvEvent()
 	return *iRecvEvent;
 }
 
+inline CSendEvent& CTlsConnection::SendEvent()
+{
+	return *iSendEvent;
+}
+
 inline MGenericSecureSocket& CTlsConnection::Socket()
 {
 	return *iSocket;
@@ -179,6 +189,11 @@ inline MGenericSecureSocket& CTlsConnection::Socket()
 inline void CTlsConnection::DoneReading()
 {
 	iReceivingData = EFalse;
+}
+
+inline void CTlsConnection::DoneSending()
+{
+	iSendingData = EFalse;
 }
 
 inline void CTlsConnection::ReadEof()

@@ -13,6 +13,9 @@ class CMbedContext;
 class CRecvData;
 class CRecvEvent;
 
+class CSendData;
+class CSendEvent;
+
 class CRecvData : public CStateMachine
 {
 public:
@@ -59,7 +62,6 @@ inline void CRecvData::SetSockXfrLength(TInt* aLen)
 
 
 
-
 class CRecvEvent : public CAsynchEvent
 {
 public:
@@ -87,7 +89,6 @@ protected:
 	
 public:
 	TPtr8 iPtrHBuf;
-	TInt iReadIdx;
 	TInt iReadState;
 
 protected:
@@ -110,5 +111,96 @@ inline CRecvData& CRecvEvent::RecvData()
 	return (CRecvData&) *iStateMachine;
 }
 
+//
+
+class CSendData : public CStateMachine
+{
+public:
+	static CSendData* NewL( CTlsConnection& aTlsConnection ); 
+	~CSendData();
+	
+	void Start( TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify );
+	
+	void Suspend();
+	void ResumeL( CTlsConnection& aTlsConnection );
+	
+	CTlsConnection& TlsConnection();
+
+protected:
+	CSendData( CTlsConnection& aTlsConnection );
+	void ConstructL( CTlsConnection& aTlsConnection );
+
+	virtual void DoCancel();
+	virtual void OnCompletion();
+
+protected:
+	CTlsConnection& iTlsConnection;
+	CSendEvent& iSendEvent;
+};
+
+inline void CSendData::Start( TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify )
+{
+	CStateMachine::Start(aClientStatus, NULL, aStateMachineNotify);
+}
+
+inline CTlsConnection& CSendData::TlsConnection()
+{
+	return iTlsConnection;
+}
+
+
+
+class CSendEvent : public CAsynchEvent
+{
+public:
+	CSendEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket );
+	~CSendEvent();
+	
+	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
+	
+	void SetData(const TDesC8* aData);
+	void SetSockXfrLength(TInt* aLen);
+	
+	void CancelAll();
+	void Set(CStateMachine* aStateMachine);
+	
+	const TDesC8* Data();
+
+protected:
+	MGenericSecureSocket& iSocket;
+	CMbedContext& iMbedContext;
+	
+	const TDesC8* iData;
+	TInt* iSockXfrLength;
+
+protected:
+	CSendData& SendData();
+
+};
+
+inline void CSendEvent::SetSockXfrLength(TInt* aLen)
+{
+	iSockXfrLength = aLen;
+}
+
+inline void CSendEvent::SetData( const TDesC8* aData )
+{
+	iData = aData;
+}
+
+inline const TDesC8* CSendEvent::Data()
+{
+	return iData;
+}
+
+inline CSendData& CSendEvent::SendData()
+{
+	return (CSendData&) *iStateMachine;
+}
+
+inline void CSendEvent::Set(CStateMachine* aStateMachine)
+{
+	iStateMachine = aStateMachine;
+}
 
 #endif

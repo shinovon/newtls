@@ -31,8 +31,10 @@ NOEXPORTLIBRARY  /* Ensures that DEF file can be safely shared
 
 #include <comms-infras/commsdebugutility.mmh> 
 SOURCEPATH	../src     // SSL source code
-SOURCE        tlsconnection.cpp
-SOURCE	      mbedcontext.cpp tlsevents.cpp
+SOURCE tlsconnection.cpp
+SOURCE mbedcontext.cpp
+SOURCE tlsevents.cpp
+//SOURCE LOGFILE.CPP
 
 USERINCLUDE	../../tlsprovider/inc
 USERINCLUDE ../../tls/secsock
