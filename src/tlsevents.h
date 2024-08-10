@@ -63,7 +63,7 @@ inline void CRecvData::SetSockXfrLength(TInt* aLen)
 class CRecvEvent : public CAsynchEvent
 {
 public:
-	CRecvEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, RSocket& aSocket );
+	CRecvEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket );
 	~CRecvEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
@@ -76,7 +76,7 @@ public:
 	
 	TDes8* Data();
 	
-	RSocket& iSocket;
+	MGenericSecureSocket& iSocket;
 
 protected:
 	CMbedContext& iMbedContext;

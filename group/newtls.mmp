@@ -52,7 +52,7 @@ SYSTEMINCLUDE		/epoc32/include
 SYSTEMINCLUDE		/epoc32/include/platform
 SYSTEMINCLUDE		/epoc32/include/stdapis
 SYSTEMINCLUDE		/epoc32/include/stdapis/sys
-SYSTEMINCLUDE		/epoc32/include/stdapis/stlport
+//SYSTEMINCLUDE		/epoc32/include/stdapis/stlport
 SYSTEMINCLUDE		../../../githubprojects/mbedtls/include
 
 EPOCALLOWDLLDATA

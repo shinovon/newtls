@@ -126,7 +126,7 @@ void CRecvData::DoCancel()
 
 
 
-CRecvEvent::CRecvEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, RSocket& aSocket ) :
+CRecvEvent::CRecvEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket ) :
   CAsynchEvent(aStateMachine),
   iSocket(aSocket),
   iMbedContext(aMbedContext),

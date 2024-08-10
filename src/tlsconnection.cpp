@@ -158,7 +158,7 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 	iMbedContext->InitSsl();
 //	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
 
-	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, aSocket);
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iGenericSocket);
 	iRecvData = CRecvData::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;
@@ -181,23 +181,20 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
  */
 {
 
-//	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
-//	CActiveScheduler::Add(this);		
-//
-//	iSocket = &aSocket;
-//	
-//	iMbedContext = new CMbedContext();
-//	iMbedContext->InitSsl();
-////	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
-//
-//	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iSocket);
-//	iRecvData = CRecvData::NewL(*this);
-//
-//	iDialogMode = EDialogModeUnattended;
-//	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
+	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
+	CActiveScheduler::Add(this);		
+
+	iSocket = &aSocket;
 	
-	LOG(Log::Printf(_L("CTlsConnection::ConstructL(2) Not supported")));
-	User::Leave(KErrNotSupported);
+	iMbedContext = new CMbedContext();
+	iMbedContext->InitSsl();
+//	iMbedContext->SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iSocket);
+	iRecvData = CRecvData::NewL(*this);
+
+	iDialogMode = EDialogModeUnattended;
+	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
 
 }
 
@@ -736,11 +733,11 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 			ret = KErrNone;
 			break;
 			}
-		case KSoEnableNullCiphers:
-			{
-			ret = KErrNone;
-			break;
-			}
+//		case KSoEnableNullCiphers:
+//			{
+//			ret = KErrNone;
+//			break;
+//			}
 //		case KSoPskConfig:
 //			{
 //			ret = KErrNone;
