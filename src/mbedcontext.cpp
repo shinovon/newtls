@@ -53,6 +53,11 @@ TInt CMbedContext::InitSsl()
 	return ret;
 }
 
+void CMbedContext::SetHostname(const char* aHostname)
+{
+	mbedtls_ssl_set_hostname(&ssl, aHostname);
+}
+
 TInt CMbedContext::Handshake()
 {
 	int ret(0);

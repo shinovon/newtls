@@ -23,6 +23,8 @@ public:
 	void SetBio(TAny* aContext, TAny* aSend, TAny* aRecv, TAny* aTimeout);
 	
 	TInt InitSsl();
+
+	void SetHostname(const char* aHostname);
 	
 	// mbedtls_ssl_handshake
 	TInt Handshake();

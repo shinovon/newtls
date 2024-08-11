@@ -670,7 +670,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1): %d %d"), aOptionName, aOptionLevel));
+	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1): name: %x, level: %x"), aOptionName, aOptionLevel));
 	TInt ret=KErrNotSupported;
 	switch(aOptionLevel)
 	{
@@ -680,23 +680,23 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 		{
 		case KSoSSLDomainName:		
 			{
-				// TODO
+			if (iMbedContext) {
+				iMbedContext->SetHostname((const char*) aOption.Ptr());
+			}
 			ret = KErrNone;
 			break;
 			}
 		case KSoDialogMode:
 			{
-			
 			TDialogMode dialogMode = (TDialogMode) ( *(TUint*)aOption.Ptr() );
 			ret = SetDialogMode(dialogMode);
-			
 			break;
 			}
-		case KSoUseSSLv2Handshake:
-			{
-			ret = KErrNone;
-			break;
-			}
+//		case KSoUseSSLv2Handshake:
+//			{
+//			ret = KErrNone;
+//			break;
+//			}
 //		case KSoEnableNullCiphers:
 //			{
 //			ret = KErrNone;
@@ -707,8 +707,13 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 //			ret = KErrNone;
 //			break;
 //			}
-//		case KSoServerNameIndication:
+//		case 0x40a/*KSoServerNameIndication*/:
 //			{
+//			if(aOption.Length() < sizeof(CDesC8Array *))
+//			{
+//				return KErrArgument;
+//			}
+//			CDesC8Array *serverNames = *reinterpret_cast<CDesC8Array * const *>(aOption.Ptr());
 //			ret = KErrNone;
 //			break;
 //			}
