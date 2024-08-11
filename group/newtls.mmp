@@ -48,7 +48,6 @@ LIBRARY		netsm.lib
 
 LIBRARY mbedtls.lib
 LIBRARY libc.lib
-LIBRARY	libm.lib
 LIBRARY libstdcpp.lib
 
 OPTION CW -wchar_t on
