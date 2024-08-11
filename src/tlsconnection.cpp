@@ -29,14 +29,12 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aPro
 		psaInitState = ETrue;
 	}
 #endif
-	LOG(Log::Printf(_L("=CTlsConnection::NewL(2)")));
 	
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
 	CleanupStack::PushL(self);
 	self->ConstructL(aSocket, aProtocol);
 	CleanupStack::Pop();
-	LOG(Log::Printf(_L("-CTlsConnection::NewL(2)")));
 	return self;
 }
 
@@ -50,7 +48,7 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
  * @return A pointer to a newly created Secure socket object.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::NewL(2)")));
+	LOG(Log::Printf(_L("CTlsConnection::NewL(2)")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
 		psa_crypto_init();
@@ -58,13 +56,11 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
 	}
 #endif
 
-	LOG(Log::Printf(_L("=CTlsConnection::NewL(2)")));
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
 	CleanupStack::PushL(self);
 	self->ConstructL(aSocket, aProtocol);
 	CleanupStack::Pop();
-	LOG(Log::Printf(_L("-CTlsConnection::NewL(2)")));
 	return self;
 }
 
@@ -74,13 +70,12 @@ EXPORT_C void CTlsConnection::UnloadDll(TAny* /*aPtr*/)
  Does nothing in this implementation but is needed to be exported.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::UnloadDll()")));
+	LOG(Log::Printf(_L("CTlsConnection::UnloadDll()")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (psaInitState) {
 		mbedtls_psa_crypto_free();
 	}
 #endif
-	LOG(Log::Printf(_L("-CTlsConnection::UnloadDll()")));
 }
 
 CTlsConnection::~CTlsConnection()
@@ -128,7 +123,6 @@ CTlsConnection::CTlsConnection() :
  * Sets the Active object priority.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::CTlsConnection()")));
 }
 
 void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
@@ -146,14 +140,13 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
  * TLS1.0) the application specified when the secure socket was created.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(1)")));
+	LOG(Log::Printf(_L("CTlsConnection::ConstructL(1)")));
 	CActiveScheduler::Add(this);		
 	
 	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
 	iSocket = iGenericSocket;
 	
 	Init();
-	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(1)")));
 }
 
 void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aProtocol)
@@ -171,13 +164,12 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
  * TLS1.0) the application specified when the secure socket was created.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::ConstructL(2)")));
+	LOG(Log::Printf(_L("CTlsConnection::ConstructL(2)")));
 	CActiveScheduler::Add(this);
 
 	iSocket = &aSocket;
 	
 	Init();
-	LOG(Log::Printf(_L("-CTlsConnection::ConstructL(2)")));
 }
 
 inline void CTlsConnection::Init()
@@ -439,7 +431,7 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
  * more data is available for reading.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::Recv()")));
+	LOG(Log::Printf(_L("CTlsConnection::Recv()")));
 	TRequestStatus* pStatus = &aStatus;
 	if (!iHandshaked || !iRecvData) {
 		User::RequestComplete(pStatus, KErrNotReady);
@@ -460,7 +452,6 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
 	iRecvData->SetSockXfrLength(NULL);
 	iRecvData->Start(pStatus, this);
 	
-	LOG(Log::Printf(_L("-CTlsConnection::Recv()")));
 }
 
 void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -477,7 +468,7 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
  * the same as the length of the returned aDesc.
  */
 {
-	LOG(Log::Printf(_L("+CTlsConnection::RecvOneOrMore(): %d"), aDesc.MaxLength()));
+	LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore(): %d"), aDesc.MaxLength()));
 	TRequestStatus* pStatus = &aStatus;
 	if (!iHandshaked || !iRecvData) {
 		User::RequestComplete(pStatus, KErrNotReady);
@@ -502,7 +493,6 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 	iRecvData->SetSockXfrLength(&aLen());
 	iRecvData->Start(pStatus, this);
 	
-	LOG(Log::Printf(_L("-CTlsConnection::RecvOneOrMore()")));
 }
 
 void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
@@ -543,14 +533,13 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
-	LOG(Log::Printf(_L("+CTlsConnection::Send(1)")));
+	LOG(Log::Printf(_L("CTlsConnection::Send(1)")));
 	iSendingData = ETrue;
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(NULL);
 	
 	iSendData->ResumeL(*this);
 	iSendData->Start(pStatus, this);
-	LOG(Log::Printf(_L("-CTlsConnection::Send(1)")));
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -574,14 +563,13 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
-	LOG(Log::Printf(_L("+CTlsConnection::Send(2)")));
+	LOG(Log::Printf(_L("CTlsConnection::Send(2)")));
 	iSendingData = ETrue;
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(&aLen());
 	
 	iSendData->ResumeL(*this);
 	iSendData->Start(pStatus, this);
-	LOG(Log::Printf(_L("-CTlsConnection::Send(2)")));
 }
 
 const CX509Certificate* CTlsConnection::ServerCert()
@@ -803,7 +791,6 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
 		ret = KErrSSLAlertHandshakeFailure;
 		LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Err %x"), -res));
 	}
-	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Success")));
 	iHandshaked = ETrue;
 	User::RequestComplete(pStatus, ret);
 }

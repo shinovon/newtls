@@ -79,12 +79,10 @@ void CRecvData::Suspend()
 
 void CRecvData::ResumeL( CTlsConnection& aTlsConnection )
 {
-	LOG(Log::Printf(_L("+CRecvData::ResumeL()")));
 	iRecvEvent.Set(this);
 	if (!iActiveEvent) {
 		iActiveEvent = &iRecvEvent;
 	}
-	LOG(Log::Printf(_L("-CRecvData::ResumeL()")));
 }
 
 void CRecvData::OnCompletion()
@@ -210,14 +208,13 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
 		}
+		LOG(Log::Printf(_L("CRecvEvent::ProcessL() Handshake err: %x"), -res));
 		// failed
 		ret = res;
 	}
 	}
 	
 	User::RequestComplete(pStatus, ret);
-		
-	LOG(Log::Printf(_L("-CRecvEvent::ProcessL()")));
 	return NULL;
 }
 
@@ -260,12 +257,10 @@ void CSendData::Suspend()
 
 void CSendData::ResumeL( CTlsConnection& aTlsConnection )
 {
-	LOG(Log::Printf(_L("+CSendData::ResumeL()")));
 	iSendEvent.Set(this);
 	if (!iActiveEvent) {
 		iActiveEvent = &iSendEvent;
 	}
-	LOG(Log::Printf(_L("-CSendData::ResumeL()")));
 }
 
 void CSendData::OnCompletion()
@@ -314,7 +309,6 @@ void CSendEvent::CancelAll()
 
 CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 {
-	LOG(Log::Printf(_L("+CSendEvent::ProcessL()")));
 	TRequestStatus* pStatus = &aStatus;
 	TInt ret = KErrNone;
 	TInt res = iMbedContext.Write(iData->Ptr(), iData->Length());
@@ -332,8 +326,6 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 //	}
 	
 	User::RequestComplete(pStatus, ret);
-		
-	LOG(Log::Printf(_L("-CSendEvent::ProcessL()")));
 	return NULL;
 }
 
