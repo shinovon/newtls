@@ -11,6 +11,8 @@
 static TBool psaInitState = EFalse;
 #endif
 
+#include <wchar.h>
+#include <stdlib.h>
 
 EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aProtocol)
 /**
@@ -681,7 +683,22 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 		case KSoSSLDomainName:		
 			{
 			if (iMbedContext) {
-				iMbedContext->SetHostname((const char*) aOption.Ptr());
+				HBufC* buf = HBufC::NewL(aOption.Length() + 2);
+				TPtr des = buf->Des();
+				des.Copy(aOption); 
+				
+				const wchar_t* w = (wchar_t*) des.PtrZ();
+				
+				size_t size = (wcslen(w) + 1) * sizeof(wchar_t);
+				
+				char* res = new char[size];
+				wcstombs(res, w, size);
+				
+				LOG(Log::Printf(_L("KSoSSLDomainName %s"), res));
+					
+				iMbedContext->SetHostname(res);
+				delete[] res;
+				delete buf;
 			}
 			ret = KErrNone;
 			break;

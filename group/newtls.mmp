@@ -47,14 +47,21 @@ LIBRARY		insock.lib
 LIBRARY		netsm.lib
 
 LIBRARY mbedtls.lib
-//LIBRARY libc.lib
-//LIBRARY libstdcpp.lib
+LIBRARY libc.lib
+LIBRARY	libm.lib
+LIBRARY libstdcpp.lib
+
+OPTION CW -wchar_t on
+#if defined(ARMCC_4_0)
+OPTION ARMCC --import_all_vtbl
+#endif
+OPTION GCCE -fvisibility-inlines-hidden
 
 SYSTEMINCLUDE		/epoc32/include
 SYSTEMINCLUDE		/epoc32/include/platform
 SYSTEMINCLUDE		/epoc32/include/stdapis
 SYSTEMINCLUDE		/epoc32/include/stdapis/sys
-//SYSTEMINCLUDE		/epoc32/include/stdapis/stlport
+SYSTEMINCLUDE		/epoc32/include/stdapis/stlport
 SYSTEMINCLUDE		../../../githubprojects/mbedtls/include
 
 EPOCALLOWDLLDATA
@@ -67,3 +74,5 @@ END
 UNPAGED
 
 SMPSAFE
+
+STDCPP
