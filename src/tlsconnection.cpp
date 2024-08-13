@@ -109,6 +109,14 @@ CTlsConnection::~CTlsConnection()
 		delete iSendEvent;
 		iSendEvent = NULL;
 	}
+	if (iHandshake) {
+		delete iHandshake;
+		iHandshake = NULL;
+	}
+	if (iHandshakeEvent) {
+		delete iHandshakeEvent;
+		iHandshakeEvent = NULL;
+	}
 	if (iClientCert) {
 		delete iClientCert;
 		iClientCert = NULL;
@@ -123,10 +131,10 @@ CTlsConnection::~CTlsConnection()
 	}
 }
 
-CTlsConnection::CTlsConnection() :
-  CActive(EPriorityHigh),
+CTlsConnection::CTlsConnection() : CActive(EPriorityHigh),
   iReceivingData(EFalse),
   iSendingData(EFalse),
+  iHandshaking(EFalse),
   iHandshaked(EFalse)
 /**
  * Constructor .
@@ -192,6 +200,9 @@ inline void CTlsConnection::Init()
 	
 	iSendEvent = new (ELeave) CSendEvent(*iMbedContext);
 	iSendData = CSendData::NewL(*this);
+	
+	iHandshakeEvent = new (ELeave) CHandshakeEvent(*iMbedContext);
+	iHandshake = CHandshake::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;
 }
@@ -230,7 +241,9 @@ void CTlsConnection::CancelAll()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
-
+	if (iHandshake) {
+		iHandshake->Cancel(KErrNone);
+	}
 	CancelRecv();
 	CancelSend();
 }
@@ -486,10 +499,6 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 	if (iReceivingData) {
 		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Busy")));
 		User::RequestComplete(pStatus, KErrInUse);
-		return;
-	}
-	if (iReadEof) {
-		User::RequestComplete(pStatus, KErrEof);
 		return;
 	}
 	iReceivingData = ETrue;
@@ -811,16 +820,17 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake()")));
-	// TODO async
 	TRequestStatus* pStatus = &aStatus;
-	TInt res = iMbedContext->Handshake();
-	TInt ret = KErrNone;
-	if (res != 0) {
-		ret = KErrSSLAlertHandshakeFailure;
-		LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Err %x"), -res));
+	if (!iHandshake) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return;
 	}
-	iHandshaked = ETrue;
-	User::RequestComplete(pStatus, ret);
+	if (iHandshaking || iReceivingData || iSendingData) {
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	iHandshake->Resume();
+	iHandshake->Start(pStatus, this);
 }
 
 void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
@@ -847,10 +857,11 @@ void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
 //MStateMachineNotify interface
 TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 {
-	if (aStateMachine != iSendData && iReadEof) {
-		return ETrue;
-	}
 	LOG(Log::Printf(_L("CTlsConnection::OnCompletion()")));
+	if (aStateMachine == iHandshake) {
+		iHandshaking = EFalse;
+		iHandshaked = aStateMachine->LastError() == KErrNone;
+	}
 	return EFalse;
 }
 

@@ -10,11 +10,9 @@ class RSocket;
 class CTlsConnection;
 class CMbedContext;
 
-class CRecvData;
 class CRecvEvent;
-
-class CSendData;
 class CSendEvent;
+class CHandshakeEvent;
 
 class CRecvData : public CStateMachine
 {
@@ -168,6 +166,57 @@ inline void CSendEvent::SetData(const TDesC8* aData)
 }
 
 inline void CSendEvent::Set(CStateMachine* aStateMachine)
+{
+	iStateMachine = aStateMachine;
+}
+
+// handshake
+
+class CHandshake : public CStateMachine
+{
+public:
+	static CHandshake* NewL(CTlsConnection& aTlsConnection); 
+	~CHandshake();
+	
+	void Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify);
+	
+	void Resume();
+
+protected:
+	CHandshake(CTlsConnection& aTlsConnection);
+	void ConstructL();
+
+	virtual void DoCancel();
+	virtual void OnCompletion();
+
+protected:
+	CTlsConnection& iTlsConnection;
+	CHandshakeEvent& iHandshakeEvent;
+};
+
+inline void CHandshake::Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify)
+{
+	CStateMachine::Start(aClientStatus, NULL, aStateMachineNotify);
+}
+
+
+
+class CHandshakeEvent : public CAsynchEvent
+{
+public:
+	CHandshakeEvent(CMbedContext& aMbedContext);
+	~CHandshakeEvent();
+	
+	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
+	
+	void CancelAll();
+	void Set(CStateMachine* aStateMachine);
+
+protected:
+	CMbedContext& iMbedContext;
+};
+
+inline void CHandshakeEvent::Set(CStateMachine* aStateMachine)
 {
 	iStateMachine = aStateMachine;
 }

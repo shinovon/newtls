@@ -292,6 +292,7 @@ CSendEvent::CSendEvent(CMbedContext& aMbedContext) :
 
 CSendEvent::~CSendEvent()
 {
+	LOG(Log::Printf(_L("CSendData::~CSendEvent")));
 	SetSockXfrLength(NULL);
 }
 
@@ -322,4 +323,90 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 	return NULL;
 }
 
-// TODO handshake
+// handshake
+
+CHandshake* CHandshake::NewL(CTlsConnection& aTlsConnection)
+{
+	CHandshake* self = new(ELeave) CHandshake(aTlsConnection);
+	CleanupStack::PushL(self);
+	self->ConstructL();
+	CleanupStack::Pop();
+	return self;
+}
+
+CHandshake::CHandshake(CTlsConnection& aTlsConnection) :
+  iTlsConnection(aTlsConnection),
+  iHandshakeEvent(aTlsConnection.HandshakeEvent())
+{
+}
+
+CHandshake::~CHandshake()
+{
+	LOG(Log::Printf(_L("CHandshake::~CHandshake()")));
+	Cancel(KErrNone);
+}
+
+void CHandshake::ConstructL()
+{
+	LOG(Log::Printf(_L("CHandshake::CHandshake()")));
+	Resume();
+}
+
+void CHandshake::Resume()
+{
+	iHandshakeEvent.Set(this);
+	if (!iActiveEvent) {
+		iActiveEvent = &iHandshakeEvent;
+	}
+}
+
+void CHandshake::OnCompletion()
+{
+	LOG(Log::Printf(_L("CHandshake::OnCompletion()")));
+	
+	if (iStatus.Int() == KRequestPending) {
+		TRequestStatus* p = &iStatus;
+		User::RequestComplete(p, iLastError);
+	}
+	
+	CStateMachine::OnCompletion();
+}
+
+void CHandshake::DoCancel()
+{
+	LOG(Log::Printf(_L("CHandshake::DoCancel()")));
+	iLastError = KErrCancel;
+	iHandshakeEvent.CancelAll();
+	CStateMachine::DoCancel();
+}
+
+// handshake event
+
+CHandshakeEvent::CHandshakeEvent(CMbedContext& aMbedContext) :
+  CAsynchEvent(NULL),
+  iMbedContext(aMbedContext)
+{
+}
+
+CHandshakeEvent::~CHandshakeEvent()
+{
+	LOG(Log::Printf(_L("CHandshakeEvent::~CHandshakeEvent()")));
+}
+
+void CHandshakeEvent::CancelAll()
+{
+}
+
+CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
+{
+	LOG(Log::Printf(_L("+CHandshakeEvent::ProcessL()")));
+	TRequestStatus* pStatus = &aStatus;
+	TInt res = iMbedContext.Handshake();
+	TInt ret = KErrNone;
+	if (res != 0) {
+		ret = KErrSSLAlertHandshakeFailure;
+		LOG(Log::Printf(_L("CHandshakeEvent::ProcessL() Err %x"), -res));
+	}
+	User::RequestComplete(pStatus, ret);
+	return NULL;
+}
