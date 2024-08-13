@@ -101,6 +101,14 @@ CTlsConnection::~CTlsConnection()
 		delete iRecvEvent;
 		iRecvEvent = NULL;
 	}
+	if (iSendData) {
+		delete iSendData;
+		iSendData = NULL;
+	}
+	if (iSendEvent) {
+		delete iSendEvent;
+		iSendEvent = NULL;
+	}
 	if (iClientCert) {
 		delete iClientCert;
 		iClientCert = NULL;
