@@ -89,10 +89,6 @@ CTlsConnection::~CTlsConnection()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
-	if (iGenericSocket) {
-		delete iGenericSocket;
-		iGenericSocket = NULL;
-	}
 	if (iRecvData) {
 		delete iRecvData;
 		iRecvData = NULL;
@@ -116,6 +112,10 @@ CTlsConnection::~CTlsConnection()
 	if (iHandshakeEvent) {
 		delete iHandshakeEvent;
 		iHandshakeEvent = NULL;
+	}
+	if (iGenericSocket) {
+		delete iGenericSocket;
+		iGenericSocket = NULL;
 	}
 	if (iClientCert) {
 		delete iClientCert;
@@ -858,7 +858,11 @@ void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
 TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 {
 	LOG(Log::Printf(_L("CTlsConnection::OnCompletion()")));
-	if (aStateMachine == iHandshake) {
+	if (aStateMachine == iSendData) {
+		iSendingData = EFalse;
+	} else if (aStateMachine == iRecvData) {
+		iReceivingData = EFalse;
+	} else if (aStateMachine == iHandshake) {
 		iHandshaking = EFalse;
 		iHandshaked = aStateMachine->LastError() == KErrNone;
 	}

@@ -103,8 +103,6 @@ void CRecvData::OnCompletion()
 	
 	iRecvEvent.SetData(NULL);
 	
-	iTlsConnection.DoneReading();
-	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;
 		User::RequestComplete(p, iLastError);
@@ -263,8 +261,6 @@ void CSendData::OnCompletion()
 	
 	iSendEvent.SetData(NULL);
 	iSendEvent.SetSockXfrLength(NULL);
-	
-	iTlsConnection.DoneSending();
 	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;

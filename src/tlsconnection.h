@@ -125,9 +125,6 @@ public:
 	CSendEvent& SendEvent();
 	CHandshakeEvent& HandshakeEvent();
 	MGenericSecureSocket& Socket();
-   
-	void DoneReading();
-	void DoneSending();
 
 	// Methods from CActive
 	void RunL();
@@ -147,9 +144,7 @@ protected:
 	CX509Certificate* iServerCert;
 	
 	CGenericSecureSocket<RSocket>* iGenericSocket; // owned
-public:
 	MGenericSecureSocket* iSocket;
-protected:
 	CMbedContext* iMbedContext;
 
 	CHandshake* iHandshake;
@@ -191,16 +186,6 @@ inline CHandshakeEvent& CTlsConnection::HandshakeEvent()
 inline MGenericSecureSocket& CTlsConnection::Socket()
 {
 	return *iSocket;
-}
-
-inline void CTlsConnection::DoneReading()
-{
-	iReceivingData = EFalse;
-}
-
-inline void CTlsConnection::DoneSending()
-{
-	iSendingData = EFalse;
 }
 
 #endif
