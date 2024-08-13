@@ -187,10 +187,10 @@ inline void CTlsConnection::Init()
 	iMbedContext = new CMbedContext();
 	iMbedContext->InitSsl();
 
-	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iGenericSocket);
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, *iGenericSocket);
 	iRecvData = CRecvData::NewL(*this);
 	
-	iSendEvent = new (ELeave) CSendEvent(*iMbedContext, 0, *iGenericSocket);
+	iSendEvent = new (ELeave) CSendEvent(*iMbedContext);
 	iSendData = CSendData::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;
@@ -456,9 +456,8 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
 	aDesc.Zero();
 
 	iRecvEvent->SetData(&aDesc);
-	iRecvEvent->SetMaxLength(aDesc.MaxLength());
 
-	iRecvData->ResumeL(*this); 
+	iRecvData->Resume(*this); 
 	iRecvData->SetSockXfrLength(NULL);
 	iRecvData->Start(pStatus, this);
 	
@@ -497,9 +496,8 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 	aDesc.Zero();
 
 	iRecvEvent->SetData(&aDesc);
-	iRecvEvent->SetMaxLength(aDesc.MaxLength());
 
-	iRecvData->ResumeL(*this);
+	iRecvData->Resume(*this);
 	iRecvData->SetSockXfrLength(&aLen());
 	iRecvData->Start(pStatus, this);
 	
@@ -548,7 +546,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(NULL);
 	
-	iSendData->ResumeL(*this);
+	iSendData->Resume(*this);
 	iSendData->Start(pStatus, this);
 }
 
@@ -578,7 +576,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(&aLen());
 	
-	iSendData->ResumeL(*this);
+	iSendData->Resume(*this);
 	iSendData->Start(pStatus, this);
 }
 

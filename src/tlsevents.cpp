@@ -67,17 +67,16 @@ CRecvData::~CRecvData()
 void CRecvData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CRecvData::ConstructL()")));
-	ResumeL(aTlsConnection);
+	Resume(aTlsConnection);
 }
 
 void CRecvData::Suspend()
 {
 	LOG(Log::Printf(_L("CRecvData::Suspend()")));
 	iRecvEvent.SetData(NULL);
-	iRecvEvent.SetMaxLength(0);
 }
 
-void CRecvData::ResumeL(CTlsConnection& aTlsConnection)
+void CRecvData::Resume(CTlsConnection& aTlsConnection)
 {
 	iRecvEvent.Set(this);
 	if (!iActiveEvent) {
@@ -103,7 +102,6 @@ void CRecvData::OnCompletion()
 	}
 	
 	iRecvEvent.SetData(NULL);
-	iRecvEvent.SetMaxLength(0);
 	
 	iTlsConnection.DoneReading();
 	
@@ -125,8 +123,8 @@ void CRecvData::DoCancel()
 
 // recvevent
 
-CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket) :
-  CAsynchEvent(aStateMachine),
+CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket) :
+  CAsynchEvent(0),
   iSocket(aSocket),
   iMbedContext(aMbedContext),
   iPtrHBuf(0, 0),
@@ -139,11 +137,6 @@ CRecvEvent::~CRecvEvent()
 {
 	LOG(Log::Printf(_L("CRecvEvent::~CRecvEvent()")));
 	delete iDataIn;
-}
-
-void CRecvEvent::SetMaxLength(TInt aLen)
-{
-	
 }
 
 void CRecvEvent::CancelAll()
@@ -246,7 +239,7 @@ CSendData::~CSendData()
 void CSendData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CSendData::ConstructL()")));
-	ResumeL(aTlsConnection);
+	Resume(aTlsConnection);
 }
 
 void CSendData::Suspend()
@@ -256,7 +249,7 @@ void CSendData::Suspend()
 	iSendEvent.SetSockXfrLength(NULL);
 }
 
-void CSendData::ResumeL(CTlsConnection& aTlsConnection)
+void CSendData::Resume(CTlsConnection& aTlsConnection)
 {
 	iSendEvent.Set(this);
 	if (!iActiveEvent) {
@@ -291,9 +284,8 @@ void CSendData::DoCancel()
 
 // sendevent
 
-CSendEvent::CSendEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket) :
-  CAsynchEvent(aStateMachine),
-  iSocket(aSocket),
+CSendEvent::CSendEvent(CMbedContext& aMbedContext) :
+  CAsynchEvent(0),
   iMbedContext(aMbedContext)
 {
 }

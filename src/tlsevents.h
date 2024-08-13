@@ -25,9 +25,7 @@ public:
 	void Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify);
 	
 	void Suspend();
-	void ResumeL(CTlsConnection& aTlsConnection);
-	
-	CTlsConnection& TlsConnection();
+	void Resume(CTlsConnection& aTlsConnection);
 	
 	void SetSockXfrLength(TInt* aLen);
 
@@ -50,11 +48,6 @@ inline void CRecvData::Start(TRequestStatus* aClientStatus, MStateMachineNotify*
 	CStateMachine::Start(aClientStatus, NULL, aStateMachineNotify);
 }
 
-inline CTlsConnection& CRecvData::TlsConnection()
-{
-	return iTlsConnection;
-}
-
 inline void CRecvData::SetSockXfrLength(TInt* aLen)
 {
 	iSockXfrLength = aLen;
@@ -65,13 +58,12 @@ inline void CRecvData::SetSockXfrLength(TInt* aLen)
 class CRecvEvent : public CAsynchEvent
 {
 public:
-	CRecvEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket);
+	CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket);
 	~CRecvEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
 	
 	void SetData(TDes8* aData);
-	void SetMaxLength(TInt aLen);
 	
 	void CancelAll();
 	void Set(CStateMachine* aStateMachine);
@@ -122,10 +114,8 @@ public:
 	void Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify);
 	
 	void Suspend();
-	void ResumeL(CTlsConnection& aTlsConnection);
+	void Resume(CTlsConnection& aTlsConnection);
 	
-	CTlsConnection& TlsConnection();
-
 protected:
 	CSendData(CTlsConnection& aTlsConnection);
 	void ConstructL(CTlsConnection& aTlsConnection);
@@ -143,17 +133,12 @@ inline void CSendData::Start(TRequestStatus* aClientStatus, MStateMachineNotify*
 	CStateMachine::Start(aClientStatus, NULL, aStateMachineNotify);
 }
 
-inline CTlsConnection& CSendData::TlsConnection()
-{
-	return iTlsConnection;
-}
-
 
 
 class CSendEvent : public CAsynchEvent
 {
 public:
-	CSendEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket);
+	CSendEvent(CMbedContext& aMbedContext);
 	~CSendEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
@@ -163,18 +148,12 @@ public:
 	
 	void CancelAll();
 	void Set(CStateMachine* aStateMachine);
-	
-	const TDesC8* Data();
 
 protected:
-	MGenericSecureSocket& iSocket;
 	CMbedContext& iMbedContext;
 	
 	const TDesC8* iData;
 	TInt* iSockXfrLength;
-
-protected:
-	CSendData& SendData();
 
 };
 
@@ -186,16 +165,6 @@ inline void CSendEvent::SetSockXfrLength(TInt* aLen)
 inline void CSendEvent::SetData(const TDesC8* aData)
 {
 	iData = aData;
-}
-
-inline const TDesC8* CSendEvent::Data()
-{
-	return iData;
-}
-
-inline CSendData& CSendEvent::SendData()
-{
-	return (CSendData&) *iStateMachine;
 }
 
 inline void CSendEvent::Set(CStateMachine* aStateMachine)
