@@ -89,10 +89,6 @@ CTlsConnection::~CTlsConnection()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
-	if (iGenericSocket) {
-		delete iGenericSocket;
-		iGenericSocket = NULL;
-	}
 	if (iRecvData) {
 		delete iRecvData;
 		iRecvData = NULL;
@@ -100,6 +96,26 @@ CTlsConnection::~CTlsConnection()
 	if (iRecvEvent) {
 		delete iRecvEvent;
 		iRecvEvent = NULL;
+	}
+	if (iSendData) {
+		delete iSendData;
+		iSendData = NULL;
+	}
+	if (iSendEvent) {
+		delete iSendEvent;
+		iSendEvent = NULL;
+	}
+	if (iHandshake) {
+		delete iHandshake;
+		iHandshake = NULL;
+	}
+	if (iHandshakeEvent) {
+		delete iHandshakeEvent;
+		iHandshakeEvent = NULL;
+	}
+	if (iGenericSocket) {
+		delete iGenericSocket;
+		iGenericSocket = NULL;
 	}
 	if (iClientCert) {
 		delete iClientCert;
@@ -115,10 +131,10 @@ CTlsConnection::~CTlsConnection()
 	}
 }
 
-CTlsConnection::CTlsConnection() :
-  CActive( EPriorityHigh ),
+CTlsConnection::CTlsConnection() : CActive(EPriorityHigh),
   iReceivingData(EFalse),
   iSendingData(EFalse),
+  iHandshaking(EFalse),
   iHandshaked(EFalse)
 /**
  * Constructor .
@@ -179,11 +195,14 @@ inline void CTlsConnection::Init()
 	iMbedContext = new CMbedContext();
 	iMbedContext->InitSsl();
 
-	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, 0, *iGenericSocket);
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, *iGenericSocket);
 	iRecvData = CRecvData::NewL(*this);
 	
-	iSendEvent = new (ELeave) CSendEvent(*iMbedContext, 0, *iGenericSocket);
+	iSendEvent = new (ELeave) CSendEvent(*iMbedContext);
 	iSendData = CSendData::NewL(*this);
+	
+	iHandshakeEvent = new (ELeave) CHandshakeEvent(*iMbedContext);
+	iHandshake = CHandshake::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;
 }
@@ -201,7 +220,7 @@ void CTlsConnection::DoCancel()
 
 
 // MSecureSocket interface
-TInt CTlsConnection::AvailableCipherSuites( TDes8& aCiphers )
+TInt CTlsConnection::AvailableCipherSuites(TDes8& aCiphers)
 /** 
  * Retrieves the list of cipher suites that are available to use
  * for handshake negotiation. 
@@ -222,7 +241,9 @@ void CTlsConnection::CancelAll()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
-
+	if (iHandshake) {
+		iHandshake->Cancel(KErrNone);
+	}
 	CancelRecv();
 	CancelSend();
 }
@@ -314,7 +335,7 @@ void CTlsConnection::Close()
 	}
 }
 
-TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
+TInt CTlsConnection::CurrentCipherSuite(TDes8& aCipherSuite)
 /**
  * Retrieves the current cipher suite in use. 
  * Cipher suites are returned in two byte format as is specified in the SSL/TLS 
@@ -330,7 +351,7 @@ TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CurrentCipherSuite()")));
-	if ( aCipherSuite.MaxLength() < 2 ) {
+	if (aCipherSuite.MaxLength() < 2) {
 		return KErrOverflow;
 	}
 	aCipherSuite.SetLength(2);
@@ -398,7 +419,7 @@ TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TInt& aOption)
  */
 { 
 	LOG(Log::Printf(_L("CTlsConnection::GetOpt(2)")));
-	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
+	TPtr8 optionDes((TUint8*)&aOption, sizeof(TInt), sizeof(TInt));
 	return GetOpt(aOptionName, aOptionLevel, optionDes);
 }
 
@@ -448,9 +469,8 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
 	aDesc.Zero();
 
 	iRecvEvent->SetData(&aDesc);
-	iRecvEvent->SetMaxLength(aDesc.MaxLength());
 
-	iRecvData->ResumeL(*this); 
+	iRecvData->Resume(*this); 
 	iRecvData->SetSockXfrLength(NULL);
 	iRecvData->Start(pStatus, this);
 	
@@ -481,17 +501,12 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
-	if (iReadEof) {
-		User::RequestComplete(pStatus, KErrEof);
-		return;
-	}
 	iReceivingData = ETrue;
 	aDesc.Zero();
 
 	iRecvEvent->SetData(&aDesc);
-	iRecvEvent->SetMaxLength(aDesc.MaxLength());
 
-	iRecvData->ResumeL(*this);
+	iRecvData->Resume(*this);
 	iRecvData->SetSockXfrLength(&aLen());
 	iRecvData->Start(pStatus, this);
 	
@@ -540,7 +555,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(NULL);
 	
-	iSendData->ResumeL(*this);
+	iSendData->Resume(*this);
 	iSendData->Start(pStatus, this);
 }
 
@@ -570,7 +585,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
 	iSendEvent->SetData(&aDesc);
 	iSendEvent->SetSockXfrLength(&aLen());
 	
-	iSendData->ResumeL(*this);
+	iSendData->Resume(*this);
 	iSendData->Start(pStatus, this);
 }
 
@@ -705,7 +720,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 			}
 		case KSoDialogMode:
 			{
-			TDialogMode dialogMode = (TDialogMode) ( *(TUint*)aOption.Ptr() );
+			TDialogMode dialogMode = (TDialogMode) (*(TUint*)aOption.Ptr());
 			ret = SetDialogMode(dialogMode);
 			break;
 			}
@@ -761,7 +776,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::SetOpt(2)")));
-	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
+	TPtr8 optionDes((TUint8*)&aOption, sizeof(TInt), sizeof(TInt));
 	return SetOpt(aOptionName, aOptionLevel, optionDes);	
 }
 
@@ -805,16 +820,17 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake()")));
-	// TODO async
 	TRequestStatus* pStatus = &aStatus;
-	TInt res = iMbedContext->Handshake();
-	TInt ret = KErrNone;
-	if (res != 0) {
-		ret = KErrSSLAlertHandshakeFailure;
-		LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake() Err %x"), -res));
+	if (!iHandshake) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return;
 	}
-	iHandshaked = ETrue;
-	User::RequestComplete(pStatus, ret);
+	if (iHandshaking || iReceivingData || iSendingData) {
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	iHandshake->Resume();
+	iHandshake->Start(pStatus, this);
 }
 
 void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
@@ -833,18 +849,23 @@ void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
 	LOG(Log::Printf(_L("CTlsConnection::StartServerHandshake()")));
 	TRequestStatus* pStatus = &aStatus;
 
-	User::RequestComplete( pStatus, KErrNotSupported );
+	User::RequestComplete(pStatus, KErrNotSupported);
 }
 
 
 
 //MStateMachineNotify interface
-TBool CTlsConnection::OnCompletion( CStateMachine* aStateMachine )
+TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 {
-	if (aStateMachine != iSendData && iReadEof) {
-		return ETrue;
-	}
 	LOG(Log::Printf(_L("CTlsConnection::OnCompletion()")));
+	if (aStateMachine == iSendData) {
+		iSendingData = EFalse;
+	} else if (aStateMachine == iRecvData) {
+		iReceivingData = EFalse;
+	} else if (aStateMachine == iHandshake) {
+		iHandshaking = EFalse;
+		iHandshaked = aStateMachine->LastError() == KErrNone;
+	}
 	return EFalse;
 }
 

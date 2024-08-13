@@ -123,11 +123,8 @@ public:
 	CMbedContext& MbedContext();
 	CRecvEvent& RecvEvent();
 	CSendEvent& SendEvent();
+	CHandshakeEvent& HandshakeEvent();
 	MGenericSecureSocket& Socket();
-   
-	void DoneReading();
-	void DoneSending();
-	void ReadEof();
 
 	// Methods from CActive
 	void RunL();
@@ -147,10 +144,11 @@ protected:
 	CX509Certificate* iServerCert;
 	
 	CGenericSecureSocket<RSocket>* iGenericSocket; // owned
-public:
 	MGenericSecureSocket* iSocket;
-protected:
 	CMbedContext* iMbedContext;
+
+	CHandshake* iHandshake;
+	CHandshakeEvent* iHandshakeEvent;
 	
 	CRecvData* iRecvData;
 	CRecvEvent* iRecvEvent;
@@ -160,9 +158,8 @@ protected:
 	
 	TBool iReceivingData;
 	TBool iSendingData;
+	TBool iHandshaking;
 	TBool iHandshaked;
-	
-	TBool iReadEof;
 	
 };
 
@@ -181,24 +178,14 @@ inline CSendEvent& CTlsConnection::SendEvent()
 	return *iSendEvent;
 }
 
+inline CHandshakeEvent& CTlsConnection::HandshakeEvent()
+{
+	return *iHandshakeEvent;
+}
+
 inline MGenericSecureSocket& CTlsConnection::Socket()
 {
 	return *iSocket;
-}
-
-inline void CTlsConnection::DoneReading()
-{
-	iReceivingData = EFalse;
-}
-
-inline void CTlsConnection::DoneSending()
-{
-	iSendingData = EFalse;
-}
-
-inline void CTlsConnection::ReadEof()
-{
-	iReadEof = true;
 }
 
 #endif
