@@ -138,6 +138,7 @@ CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine,
 CRecvEvent::~CRecvEvent()
 {
 	LOG(Log::Printf(_L("CRecvEvent::~CRecvEvent()")));
+	delete iDataIn;
 }
 
 void CRecvEvent::SetMaxLength(TInt aLen)
