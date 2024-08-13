@@ -116,7 +116,7 @@ CTlsConnection::~CTlsConnection()
 }
 
 CTlsConnection::CTlsConnection() :
-  CActive( EPriorityHigh ),
+  CActive(EPriorityHigh),
   iReceivingData(EFalse),
   iSendingData(EFalse),
   iHandshaked(EFalse)
@@ -201,7 +201,7 @@ void CTlsConnection::DoCancel()
 
 
 // MSecureSocket interface
-TInt CTlsConnection::AvailableCipherSuites( TDes8& aCiphers )
+TInt CTlsConnection::AvailableCipherSuites(TDes8& aCiphers)
 /** 
  * Retrieves the list of cipher suites that are available to use
  * for handshake negotiation. 
@@ -314,7 +314,7 @@ void CTlsConnection::Close()
 	}
 }
 
-TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
+TInt CTlsConnection::CurrentCipherSuite(TDes8& aCipherSuite)
 /**
  * Retrieves the current cipher suite in use. 
  * Cipher suites are returned in two byte format as is specified in the SSL/TLS 
@@ -330,7 +330,7 @@ TInt CTlsConnection::CurrentCipherSuite( TDes8& aCipherSuite )
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CurrentCipherSuite()")));
-	if ( aCipherSuite.MaxLength() < 2 ) {
+	if (aCipherSuite.MaxLength() < 2) {
 		return KErrOverflow;
 	}
 	aCipherSuite.SetLength(2);
@@ -398,7 +398,7 @@ TInt CTlsConnection::GetOpt(TUint aOptionName,TUint aOptionLevel,TInt& aOption)
  */
 { 
 	LOG(Log::Printf(_L("CTlsConnection::GetOpt(2)")));
-	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
+	TPtr8 optionDes((TUint8*)&aOption, sizeof(TInt), sizeof(TInt));
 	return GetOpt(aOptionName, aOptionLevel, optionDes);
 }
 
@@ -705,7 +705,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 			}
 		case KSoDialogMode:
 			{
-			TDialogMode dialogMode = (TDialogMode) ( *(TUint*)aOption.Ptr() );
+			TDialogMode dialogMode = (TDialogMode) (*(TUint*)aOption.Ptr());
 			ret = SetDialogMode(dialogMode);
 			break;
 			}
@@ -761,7 +761,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::SetOpt(2)")));
-	TPtr8 optionDes( (TUint8*)&aOption, sizeof(TInt), sizeof(TInt) );
+	TPtr8 optionDes((TUint8*)&aOption, sizeof(TInt), sizeof(TInt));
 	return SetOpt(aOptionName, aOptionLevel, optionDes);	
 }
 
@@ -833,13 +833,13 @@ void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
 	LOG(Log::Printf(_L("CTlsConnection::StartServerHandshake()")));
 	TRequestStatus* pStatus = &aStatus;
 
-	User::RequestComplete( pStatus, KErrNotSupported );
+	User::RequestComplete(pStatus, KErrNotSupported);
 }
 
 
 
 //MStateMachineNotify interface
-TBool CTlsConnection::OnCompletion( CStateMachine* aStateMachine )
+TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 {
 	if (aStateMachine != iSendData && iReadEof) {
 		return ETrue;

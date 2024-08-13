@@ -41,11 +41,11 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 
 // recvdata
 
-CRecvData* CRecvData::NewL( CTlsConnection& aTlsConnection )
+CRecvData* CRecvData::NewL(CTlsConnection& aTlsConnection)
 {
-	CRecvData* self = new(ELeave) CRecvData( aTlsConnection );
-	CleanupStack::PushL( self );
-	self->ConstructL( aTlsConnection );
+	CRecvData* self = new(ELeave) CRecvData(aTlsConnection);
+	CleanupStack::PushL(self);
+	self->ConstructL(aTlsConnection);
 	CleanupStack::Pop();
 	return self;
 }
@@ -60,11 +60,11 @@ CRecvData::CRecvData(CTlsConnection& aTlsConnection) :
 CRecvData::~CRecvData()
 {
 	LOG(Log::Printf(_L("CRecvData::~CRecvData")));
-	SetSockXfrLength( NULL );
-	Cancel( KErrNone );
+	SetSockXfrLength(NULL);
+	Cancel(KErrNone);
 }
 
-void CRecvData::ConstructL( CTlsConnection& aTlsConnection )
+void CRecvData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CRecvData::ConstructL()")));
 	ResumeL(aTlsConnection);
@@ -73,11 +73,11 @@ void CRecvData::ConstructL( CTlsConnection& aTlsConnection )
 void CRecvData::Suspend()
 {
 	LOG(Log::Printf(_L("CRecvData::Suspend()")));
-	iRecvEvent.SetData( NULL );
-	iRecvEvent.SetMaxLength( 0 );
+	iRecvEvent.SetData(NULL);
+	iRecvEvent.SetMaxLength(0);
 }
 
-void CRecvData::ResumeL( CTlsConnection& aTlsConnection )
+void CRecvData::ResumeL(CTlsConnection& aTlsConnection)
 {
 	iRecvEvent.Set(this);
 	if (!iActiveEvent) {
@@ -102,14 +102,14 @@ void CRecvData::OnCompletion()
 		}
 	}
 	
-	iRecvEvent.SetData( NULL );
-	iRecvEvent.SetMaxLength( 0 );
+	iRecvEvent.SetData(NULL);
+	iRecvEvent.SetMaxLength(0);
 	
 	iTlsConnection.DoneReading();
 	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;
-		User::RequestComplete( p, iLastError );
+		User::RequestComplete(p, iLastError);
 	}
 	
 	CStateMachine::OnCompletion();
@@ -125,11 +125,11 @@ void CRecvData::DoCancel()
 
 // recvevent
 
-CRecvEvent::CRecvEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket ) :
+CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket) :
   CAsynchEvent(aStateMachine),
   iSocket(aSocket),
   iMbedContext(aMbedContext),
-  iPtrHBuf( 0, 0 ),
+  iPtrHBuf(0, 0),
   iReadState(0)
 {
 	aMbedContext.SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
@@ -154,7 +154,7 @@ void CRecvEvent::Set(CStateMachine* aStateMachine)
 {
 	iStateMachine = aStateMachine;
 	if (!iDataIn) {
-		iDataIn = HBufC8::NewL( 4096 );
+		iDataIn = HBufC8::NewL(8);
 	}
 	iReadState = 0;
 }
@@ -168,7 +168,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	switch (iReadState) {
 	case 0: // read tls header
 	{
-		iPtrHBuf.Set( (TUint8*)iDataIn->Des().Ptr(), 0, 5 );
+		iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, 5);
 		TSockXfrLength len;
 		iSocket.Recv(iPtrHBuf, 0, aStatus);
 		iReadState = 1;
@@ -220,11 +220,11 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 
 // senddata
 
-CSendData* CSendData::NewL( CTlsConnection& aTlsConnection )
+CSendData* CSendData::NewL(CTlsConnection& aTlsConnection)
 {
-	CSendData* self = new(ELeave) CSendData( aTlsConnection );
-	CleanupStack::PushL( self );
-	self->ConstructL( aTlsConnection );
+	CSendData* self = new(ELeave) CSendData(aTlsConnection);
+	CleanupStack::PushL(self);
+	self->ConstructL(aTlsConnection);
 	CleanupStack::Pop();
 	return self;
 }
@@ -239,10 +239,10 @@ CSendData::CSendData(CTlsConnection& aTlsConnection) :
 CSendData::~CSendData()
 {
 	LOG(Log::Printf(_L("CSendData::~CSendData")));
-	Cancel( KErrNone );
+	Cancel(KErrNone);
 }
 
-void CSendData::ConstructL( CTlsConnection& aTlsConnection )
+void CSendData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CSendData::ConstructL()")));
 	ResumeL(aTlsConnection);
@@ -255,7 +255,7 @@ void CSendData::Suspend()
 	iSendEvent.SetSockXfrLength(NULL);
 }
 
-void CSendData::ResumeL( CTlsConnection& aTlsConnection )
+void CSendData::ResumeL(CTlsConnection& aTlsConnection)
 {
 	iSendEvent.Set(this);
 	if (!iActiveEvent) {
@@ -274,7 +274,7 @@ void CSendData::OnCompletion()
 	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;
-		User::RequestComplete( p, iLastError );
+		User::RequestComplete(p, iLastError);
 	}
 	
 	CStateMachine::OnCompletion();
@@ -290,7 +290,7 @@ void CSendData::DoCancel()
 
 // sendevent
 
-CSendEvent::CSendEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket ) :
+CSendEvent::CSendEvent(CMbedContext& aMbedContext, CStateMachine* aStateMachine, MGenericSecureSocket& aSocket) :
   CAsynchEvent(aStateMachine),
   iSocket(aSocket),
   iMbedContext(aMbedContext)
@@ -299,7 +299,7 @@ CSendEvent::CSendEvent( CMbedContext& aMbedContext, CStateMachine* aStateMachine
 
 CSendEvent::~CSendEvent()
 {
-	SetSockXfrLength( NULL );
+	SetSockXfrLength(NULL);
 }
 
 void CSendEvent::CancelAll()
