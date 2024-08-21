@@ -74,6 +74,7 @@ protected:
 	CMbedContext& iMbedContext;
 	
 	TDes8* iData;
+	TInt iCurrentPos;
 	
 	HBufC8* iDataIn;
 	

@@ -149,6 +149,7 @@ void CRecvEvent::Set(CStateMachine* aStateMachine)
 		iDataIn = HBufC8::NewL(8);
 	}
 	iReadState = 0;
+	iCurrentPos = 0;
 }
 
 CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
@@ -172,7 +173,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			User::RequestComplete(pStatus, ret);
 			return NULL;
 		}
-		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr(), iData->MaxLength());
+		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
 		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 			ret = KErrEof;
 			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
@@ -189,7 +190,8 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			break;
 		}
 
-		iData->SetLength(res);
+		iData->SetLength(iCurrentPos + res);
+		iCurrentPos += res;
 	}
 	break;
 	case 3: // reconnect
