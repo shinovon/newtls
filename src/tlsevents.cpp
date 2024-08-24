@@ -197,7 +197,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	case 3: // reconnect
 	{
 		TInt res = iMbedContext.Handshake();
-		iReadState = 1;
+		iReadState = 0;
 		if (res == 0) {
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
