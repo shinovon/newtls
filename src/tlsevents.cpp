@@ -1,3 +1,6 @@
+// Copyright 2024 Arman Jussupgaliyev
+// Copyright 2009 Nokia Corporation
+
 #include "tlsevents.h"
 #include "mbedcontext.h"
 #include "LOGFILE.h"

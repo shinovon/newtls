@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2024 Arman Jussupgaliyev
+ */
+
 #include "mbedcontext.h"
 
 CMbedContext::CMbedContext()

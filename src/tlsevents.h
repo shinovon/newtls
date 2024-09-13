@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024 Arman Jussupgaliyev
+ * Copyright (c) 2009 Nokia Corporation
+ */
+
 #ifndef TLSEVENTS_H
 #define TLSEVENTS_H
 

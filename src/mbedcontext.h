@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2024 Arman Jussupgaliyev
+ */
+
 #ifndef MBEDCONTEXT_H
 #define MBEDCONTEXT_H
 #include <e32base.h>
