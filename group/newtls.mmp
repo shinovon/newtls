@@ -23,7 +23,8 @@ LIBRARY		esock.lib
 LIBRARY		insock.lib
 LIBRARY		netsm.lib
 
-LIBRARY mbedtls.lib
+STATICLIBRARY mbedtls2.lib
+LIBRARY libpthread.lib
 LIBRARY libc.lib
 
 OPTION CW -wchar_t on
@@ -36,7 +37,7 @@ SYSTEMINCLUDE		/epoc32/include
 SYSTEMINCLUDE		/epoc32/include/platform
 SYSTEMINCLUDE		/epoc32/include/stdapis
 SYSTEMINCLUDE		/epoc32/include/stdapis/sys
-SYSTEMINCLUDE		../../../githubprojects/mbedtls/include
+SYSTEMINCLUDE		../../../githubprojects/mbedtls2/include
 
 EPOCALLOWDLLDATA
 

@@ -32,12 +32,12 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aPro
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::NewL(1)")));
-#if defined(MBEDTLS_USE_PSA_CRYPTO)
+//#if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
 		psa_crypto_init();
 		psaInitState = ETrue;
 	}
-#endif
+//#endif
 	
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
@@ -58,12 +58,12 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::NewL(2)")));
-#if defined(MBEDTLS_USE_PSA_CRYPTO)
+//#if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
 		psa_crypto_init();
 		psaInitState = ETrue;
 	}
-#endif
+//#endif
 
 	CTlsConnection* self = new(ELeave) CTlsConnection();
 
@@ -80,11 +80,11 @@ EXPORT_C void CTlsConnection::UnloadDll(TAny* /*aPtr*/)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::UnloadDll()")));
-#if defined(MBEDTLS_USE_PSA_CRYPTO)
+//#if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (psaInitState) {
 		mbedtls_psa_crypto_free();
 	}
-#endif
+//#endif
 }
 
 CTlsConnection::~CTlsConnection()
