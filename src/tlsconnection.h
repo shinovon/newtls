@@ -71,11 +71,8 @@ Following max size is sufficient to all those cases.
 const TInt KKeyingLabelMaxSize = 100;
 
 // TlsConnection supported protocols 
-_LIT( KProtocolVerSSL30, "SSL3.0" );	//< SSL 3.0 Protocol
+//_LIT( KProtocolVerSSL30, "SSL3.0" );	//< SSL 3.0 Protocol
 _LIT( KProtocolVerTLS10, "TLS1.0" );	//< TLS 1.0 Protocol
-_LIT( KProtocolVerTLS11, "TLS1.1" );	//< TLS 1.1 Protocol
-_LIT( KProtocolVerTLS12, "TLS1.2" );	//< TLS 1.2 Protocol
-_LIT( KProtocolVerTLS13, "TLS1.3" );	//< TLS 1.3 Protocol
 
 class CTlsConnection : public CActive, public MSecureSocket, public MStateMachineNotify
 /**

@@ -1,5 +1,7 @@
-// Copyright 2024 Arman Jussupgaliyev
-// Copyright 2009 Nokia Corporation
+/**
+ * Copyright (c) 2024 Arman Jussupgaliyev
+ * Copyright (c) 2009 Nokia Corporation
+ */
 
 #include "tlsevents.h"
 #include "mbedcontext.h"
@@ -25,21 +27,21 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
 	CRecvEvent* s = (CRecvEvent*) ctx;
 	
-	TPtr8 des = TPtr8(buf, len);
+	TPtr8 des = TPtr8(buf, 0, len);
 	
-	if (s->iReadState == 0 || s->iReadState == 2) {
-		TRequestStatus stat;
-		s->iSocket.Recv(des, 0, stat);
-		User::WaitForRequest(stat);
-		
-		TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
-		if (ret == KErrEof) ret = 0;
-		return ret;
+	if (s->iReadState == 1) {
+		des.Copy(s->iPtrHBuf);
+		s->iReadState = 2;
+		return s->iPtrHBuf.MaxLength();
 	}
 	
-	des.Copy(s->iPtrHBuf);
-	s->iReadState = 2;
-	return len;
+	TRequestStatus stat;
+	s->iSocket.Recv(des, 0, stat);
+	User::WaitForRequest(stat);
+	
+	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
+	if (ret == KErrEof) ret = 0;
+	return ret;
 }
 
 // recvdata
