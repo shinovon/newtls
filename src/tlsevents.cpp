@@ -179,6 +179,10 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			return NULL;
 		}
 		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
+		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+			User::RequestComplete(pStatus, KErrNone);
+			return this;
+		}
 		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 			ret = KErrEof;
 			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
@@ -309,6 +313,10 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 	TRequestStatus* pStatus = &aStatus;
 	TInt ret = KErrNone;
 	TInt res = iMbedContext.Write(iData->Ptr(), iData->Length());
+	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+		User::RequestComplete(pStatus, KErrNone);
+		return this;
+	}
 	if (res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 		res = KErrEof;
 	} else if (res < 0) {
