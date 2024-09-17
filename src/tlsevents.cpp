@@ -173,6 +173,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		return this;
 	}
 	case 1: // read data
+	case 2:
 	{
 		if (iStateMachine->LastError() != KErrNone) {
 			User::RequestComplete(pStatus, ret);
@@ -180,6 +181,8 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		}
 		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
 		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Ticket")));
+			iReadState = 0;
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
 		}
