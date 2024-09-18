@@ -79,11 +79,11 @@ TInt CMbedContext::Handshake()
 		break;
 	}
 	
-	if (ret == 0) {
-		unsigned char* tmp = new unsigned char[1];
-		mbedtls_ssl_read(&ssl, tmp, 0);
-		delete[] tmp;
-	}
+	//if (ret == 0) {
+	//	unsigned char* tmp = new unsigned char[1];
+	//	mbedtls_ssl_read(&ssl, tmp, 0);
+	//	delete[] tmp;
+	//}
 	
 	return ret;
 }
