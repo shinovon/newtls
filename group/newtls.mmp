@@ -11,7 +11,7 @@ SOURCEPATH	../src
 SOURCE tlsconnection.cpp
 SOURCE mbedcontext.cpp
 SOURCE tlsevents.cpp
-//SOURCE LOGFILE.CPP
+SOURCE LOGFILE.CPP
 
 USERINCLUDE	../../tlsprovider/inc
 USERINCLUDE ../../tls/secsock

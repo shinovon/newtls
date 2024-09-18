@@ -11,6 +11,7 @@
 
 LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 {
+	LOG(Log::Printf(_L("+send_callback %d"), len));
 	CRecvEvent* s = (CRecvEvent*) ctx;
 	
 	const TPtrC8 des((const TUint8*) buf, len);
@@ -25,12 +26,14 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 
 LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
+	LOG(Log::Printf(_L("+recv_callback %d"), len));
 	CRecvEvent* s = (CRecvEvent*) ctx;
 	
 	TPtr8 des = TPtr8(buf, 0, len);
 	
 	if (s->iReadState == 1) {
 		des.Copy(s->iPtrHBuf);
+		s->iBufferState = 0;
 		s->iReadState = 2;
 		return s->iPtrHBuf.MaxLength();
 	}
@@ -41,6 +44,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	
 	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
 	if (ret == KErrEof) ret = 0;
+	LOG(Log::Printf(_L("-recv_callback %d (%d)"), ret, stat.Int()));
 	return ret;
 }
 
@@ -131,7 +135,8 @@ CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket
   iSocket(aSocket),
   iMbedContext(aMbedContext),
   iPtrHBuf(0, 0),
-  iReadState(0)
+  iReadState(0),
+  iBufferState(0)
 {
 	aMbedContext.SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
 }
@@ -153,7 +158,7 @@ void CRecvEvent::Set(CStateMachine* aStateMachine)
 	if (!iDataIn) {
 		iDataIn = HBufC8::NewL(8);
 	}
-	iReadState = 0;
+	iReadState = iBufferState == 1 ? 1 : 0;
 	iCurrentPos = 0;
 }
 
@@ -166,9 +171,11 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	switch (iReadState) {
 	case 0: // read tls header
 	{
+		LOG(Log::Printf(_L("Read header")));
 		iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, 5);
 		TSockXfrLength len;
 		iSocket.Recv(iPtrHBuf, 0, aStatus);
+		iBufferState = 1;
 		iReadState = 1;
 		return this;
 	}
@@ -182,7 +189,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
 		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
 			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Ticket")));
-			iReadState = 0;
+			if (iBufferState != 1) iReadState = 0;
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
 		}
@@ -192,6 +199,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			break;
 		}
 		if (res == MBEDTLS_ERR_SSL_CLIENT_RECONNECT) {
+			LOG(Log::Printf(_L("Reconnect")));
 			iReadState = 3;
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
@@ -201,6 +209,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Err: %x"), -res));
 			break;
 		}
+		LOG(Log::Printf(_L("Recv %d"), res));
 
 		iData->SetLength(iCurrentPos + res);
 		iCurrentPos += res;
@@ -317,6 +326,7 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 	TInt ret = KErrNone;
 	TInt res = iMbedContext.Write(iData->Ptr(), iData->Length());
 	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+		LOG(Log::Printf(_L("CSendEvent::ProcessL() Ticket")));
 		User::RequestComplete(pStatus, KErrNone);
 		return this;
 	}

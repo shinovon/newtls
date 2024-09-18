@@ -86,6 +86,7 @@ protected:
 public:
 	TPtr8 iPtrHBuf;
 	TInt iReadState;
+	TInt iBufferState;
 
 protected:
 	CRecvData& RecvData();
