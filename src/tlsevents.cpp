@@ -31,7 +31,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	
 	TPtr8 des = TPtr8(buf, 0, len);
 	
-	if (s->iReadState == 1) {
+	if (s->iReadState == 1 && s->iBufferState) {
 		des.Copy(s->iPtrHBuf);
 		s->iBufferState = 0;
 		s->iReadState = 2;
@@ -149,7 +149,8 @@ CRecvEvent::~CRecvEvent()
 
 void CRecvEvent::CancelAll()
 {
-	
+	iReadState = 0;
+	iBufferState = 0;
 }
 
 void CRecvEvent::Set(CStateMachine* aStateMachine)
@@ -188,14 +189,14 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		}
 		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
 		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
-			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Ticket")));
-			if (iBufferState != 1) iReadState = 0;
+			LOG(Log::Printf(_L("Ticket received on read")));
+			if (!iBufferState) iReadState = 0;
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
 		}
 		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
 			ret = KErrEof;
-			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Eof")));
+			LOG(Log::Printf(_L("Read eof")));
 			break;
 		}
 		if (res == MBEDTLS_ERR_SSL_CLIENT_RECONNECT) {
@@ -206,10 +207,10 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		}
 		if (res < 0) {
 			ret = res;
-			LOG(Log::Printf(_L("CRecvEvent::ProcessL() Err: %x"), -res));
+			LOG(Log::Printf(_L("Read error: %x"), -res));
 			break;
 		}
-		LOG(Log::Printf(_L("Recv %d"), res));
+//		LOG(Log::Printf(_L("Recv %d"), res));
 
 		iData->SetLength(iCurrentPos + res);
 		iCurrentPos += res;
@@ -217,13 +218,17 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	break;
 	case 3: // reconnect
 	{
+		if (iBufferState) {
+			LOG(Log::Printf(_L("Invalid buffer state on reconnect!")));
+//			iBufferState = 0;
+		}
 		TInt res = iMbedContext.Handshake();
 		iReadState = 0;
 		if (res == 0) {
 			User::RequestComplete(pStatus, KErrNone);
 			return this;
 		}
-		LOG(Log::Printf(_L("CRecvEvent::ProcessL() Handshake err: %x"), -res));
+		LOG(Log::Printf(_L("Reconnect handshake err: %x"), -res));
 		// failed
 		ret = res;
 	}
@@ -324,24 +329,30 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 {
 	TRequestStatus* pStatus = &aStatus;
 	TInt ret = KErrNone;
-	TInt res = iMbedContext.Write(iData->Ptr(), iData->Length());
+	TInt res = iMbedContext.Write(iData->Ptr() + iCurrentPos, iData->Length() - iCurrentPos);
 	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
-		LOG(Log::Printf(_L("CSendEvent::ProcessL() Ticket")));
+		LOG(Log::Printf(_L("Ticket received on write")));
 		User::RequestComplete(pStatus, KErrNone);
 		return this;
 	}
-	if (res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-		res = KErrEof;
-	} else if (res < 0) {
-		// TODO reconnect support
-		ret = res;
-		LOG(Log::Printf(_L("CSendEvent::ProcessL() Err: %x"), -res));
+	if (res < 0) {
+		if (res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+			ret = KErrEof;
+		} else {
+			// TODO reconnect?
+			ret = res;
+		}
+		LOG(Log::Printf(_L("Write error: %x"), -res));
 	} else if (iSockXfrLength) {
 		*iSockXfrLength = res;
+	} else {
+		LOG(Log::Printf(_L("Write repeat")));
+		iCurrentPos += res;
+		if (iCurrentPos < iData->Length()) {
+			User::RequestComplete(pStatus, KErrNone);
+			return this;
+		}
 	}
-//	else if (res != iData->Length()) {
-//		// TODO error
-//	}
 	
 	User::RequestComplete(pStatus, ret);
 	return NULL;

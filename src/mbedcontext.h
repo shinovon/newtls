@@ -36,6 +36,9 @@ public:
 	// mbedtls_ssl_renegotiate
 //	TInt Renegotiate();
 	
+//	TInt ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen);
+//	TInt LoadSession(const unsigned char *aData, TInt aLen);
+	
 	// mbedtls_ssl_read
 	TInt Read(unsigned char* aData, TInt aLen);
 	
@@ -44,5 +47,8 @@ public:
 	
 	// mbedtls_ssl_close_notify
 	TInt SslCloseNotify();
+	
+	// mbedtls_ssl_session_reset
+	TInt Reset();
 };
 #endif

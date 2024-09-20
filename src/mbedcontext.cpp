@@ -66,24 +66,14 @@ void CMbedContext::SetHostname(const char* aHostname)
 
 TInt CMbedContext::Handshake()
 {
-	int ret(0);
+	int ret;
 	
-	while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
-		if (ret == MBEDTLS_ERR_SSL_WANT_READ ||
-			ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
-			ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-			ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-			continue;
-		}
-			
-		break;
-	}
-	
-	//if (ret == 0) {
-	//	unsigned char* tmp = new unsigned char[1];
-	//	mbedtls_ssl_read(&ssl, tmp, 0);
-	//	delete[] tmp;
-	//}
+	do {
+		ret = mbedtls_ssl_handshake(&ssl);
+	} while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+		ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
+		ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+		ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS);
 	
 	return ret;
 }
@@ -93,46 +83,55 @@ TInt CMbedContext::Handshake()
 //	return mbedtls_ssl_renegotiate(&ssl);
 //}
 
+//TInt CMbedContext::ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen) {
+//    mbedtls_ssl_session exported_session;
+//    mbedtls_ssl_session_init(&exported_session);
+//    int ret = mbedtls_ssl_get_session(ssl, &exported_session);
+//    if (ret != 0) goto exit;
+//	ret = mbedtls_ssl_session_save(&exported_session, aData, static_cast<unsigned int>(aMaxLen), aLen);
+//exit:
+//	mbedtls_ssl_session_free(&exported_session);
+//	return ret;
+//}
+
+//TInt CMbedContext::LoadSession(const unsigned char *aData, TInt aLen) {
+//	return -1;
+//}
+
 TInt CMbedContext::Read(unsigned char* aData, TInt aLen)
 {
-	int r;
+	int ret;
 	do {
-		r = mbedtls_ssl_read(&ssl, aData, static_cast<unsigned int>(aLen));
-		
-		if (r == MBEDTLS_ERR_SSL_WANT_READ ||
-			r == MBEDTLS_ERR_SSL_WANT_WRITE ||
-			r == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-			r == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-			continue;
-		}
-		if (r < 0) {
-			break;
-		}
-		break;
-	} while (1);
-	return r;
+		ret = mbedtls_ssl_read(&ssl, aData, static_cast<unsigned int>(aLen));
+	} while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+			ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
+			ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+			ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS);
+	return ret;
 }
 
 TInt CMbedContext::Write(const unsigned char* aData, TInt aLen)
 {
-	int r;
+	int ret;
 	do {
-		r = mbedtls_ssl_write(&ssl, aData, static_cast<unsigned int>(aLen));
-		if (r == MBEDTLS_ERR_SSL_WANT_READ ||
-			r == MBEDTLS_ERR_SSL_WANT_WRITE ||
-			r == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
-			r == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS) {
-			continue;
-		}
-		if (r < 0) {
-			break;
-		}
-		break;
-	} while(1);
-	return r;
+		ret = mbedtls_ssl_write(&ssl, aData, static_cast<unsigned int>(aLen));
+	} while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+			ret == MBEDTLS_ERR_SSL_WANT_WRITE ||
+			ret == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+			ret == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS);
+	return ret;
 }
 
 TInt CMbedContext::SslCloseNotify()
 {
-	return mbedtls_ssl_close_notify(&ssl);
+	int ret;
+	do {
+		ret = mbedtls_ssl_close_notify(&ssl);
+	} while (ret == MBEDTLS_ERR_SSL_WANT_READ ||
+			ret == MBEDTLS_ERR_SSL_WANT_WRITE);
+	return ret;
+}
+
+TInt CMbedContext::Reset() {
+	return mbedtls_ssl_session_reset(&ssl);
 }

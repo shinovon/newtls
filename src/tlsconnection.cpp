@@ -1,9 +1,11 @@
-// Copyright (c) 2003-2009 Nokia Corporation and/or its subsidiary(-ies).
-// All rights reserved.
-// This component and the accompanying materials are made available
-// under the terms of "Eclipse Public License v1.0"
-// which accompanies this distribution, and is available
-// at the URL "http://www.eclipse.org/legal/epl-v10.html".
+/**
+* Copyright (c) 2003-2009 Nokia Corporation and/or its subsidiary(-ies).
+* All rights reserved.
+* This component and the accompanying materials are made available
+* under the terms of "Eclipse Public License v1.0"
+* which accompanies this distribution, and is available
+* at the URL "http://www.eclipse.org/legal/epl-v10.html".
+*/
 
 #include "tlsconnection.h"
 #include <es_sock.h>
@@ -34,8 +36,8 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aPro
 	LOG(Log::Printf(_L("CTlsConnection::NewL(1)")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
-		psa_crypto_init();
 		psaInitState = ETrue;
+		psa_crypto_init();
 	}
 #endif
 	
@@ -60,8 +62,8 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
 	LOG(Log::Printf(_L("CTlsConnection::NewL(2)")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (!psaInitState) {
-		psa_crypto_init();
 		psaInitState = ETrue;
+		psa_crypto_init();
 	}
 #endif
 
@@ -74,15 +76,12 @@ EXPORT_C MSecureSocket* CTlsConnection::NewL(MGenericSecureSocket& aSocket, cons
 }
 
 EXPORT_C void CTlsConnection::UnloadDll(TAny* /*aPtr*/)
-/**
- Function called prior to unloading DLL.  
- Does nothing in this implementation but is needed to be exported.
- */
 {
 	LOG(Log::Printf(_L("CTlsConnection::UnloadDll()")));
 #if defined(MBEDTLS_USE_PSA_CRYPTO)
 	if (psaInitState) {
 		mbedtls_psa_crypto_free();
+		psaInitState = EFalse;
 	}
 #endif
 }
@@ -166,7 +165,7 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::ConstructL(1)")));
-	CActiveScheduler::Add(this);		
+	CActiveScheduler::Add(this);
 	
 	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
 	iSocket = iGenericSocket;
@@ -238,6 +237,7 @@ TInt CTlsConnection::AvailableCipherSuites(TDes8& aCiphers)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	// ignored
 	LOG(Log::Printf(_L("CTlsConnection::AvailableCipherSuites()")));
 	return KErrNone;
 }
@@ -286,7 +286,6 @@ void CTlsConnection::CancelSend()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelSend()")));
-	// TODO
 	if (iSocket) {
 		iSocket->CancelSend();
 	}
@@ -340,6 +339,7 @@ void CTlsConnection::Close()
 	if (iSocket) {
 		iSocket->Close();
 	}
+//	Reset();
 }
 
 TInt CTlsConnection::CurrentCipherSuite(TDes8& aCipherSuite)
@@ -357,6 +357,7 @@ TInt CTlsConnection::CurrentCipherSuite(TDes8& aCipherSuite)
  * @return Any one of the system error codes, or KErrNone on success. 
  */
 {
+	// stub
 	LOG(Log::Printf(_L("CTlsConnection::CurrentCipherSuite()")));
 	if (aCipherSuite.MaxLength() < 2) {
 		return KErrOverflow;
@@ -395,6 +396,7 @@ void CTlsConnection::FlushSessionCache()
  * to the client.
  */
 {
+	// TODO session cache
 	LOG(Log::Printf(_L("CTlsConnection::FlushSessionCache()")));
 }
 
@@ -443,6 +445,7 @@ TInt CTlsConnection::Protocol(TDes& aProtocol)
  * @return An Integer value indicating the outcome of the function call.
  */
 {
+	// always returns TLS 1.0
 	LOG(Log::Printf(_L("CTlsConnection::Protocol()")));
 	if (aProtocol.MaxSize() < KProtocolDescMinSize) return KErrOverflow;
 	aProtocol.Copy(KProtocolVerTLS10);
@@ -609,7 +612,7 @@ const CX509Certificate* CTlsConnection::ServerCert()
  */ 
 {
 	LOG(Log::Printf(_L("CTlsConnection::ServerCert()")));
-	// TODO
+	// TODO server certificate
 	return NULL;
 }
 
@@ -694,7 +697,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::SetOpt(1): name: %x, level: %x"), aOptionName, aOptionLevel));
+	LOG(Log::Printf(_L("CTlsConnection::SetOpt(): name: %x, level: %x"), aOptionName, aOptionLevel));
 	TInt ret=KErrNotSupported;
 	switch(aOptionLevel)
 	{
@@ -705,6 +708,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 		case KSoSSLDomainName:		
 			{
 			if (iMbedContext) {
+				// text conversion
 				HBufC* buf = HBufC::NewL(aOption.Length() + 2);
 				TPtr des = buf->Des();
 				des.Copy(aOption); 
@@ -715,8 +719,6 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 				
 				char* res = new char[size];
 				wcstombs(res, w, size);
-				
-				LOG(Log::Printf(_L("KSoSSLDomainName %s"), res));
 					
 				iMbedContext->SetHostname(res);
 				delete[] res;
@@ -782,7 +784,6 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel,TInt aOption)
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::SetOpt(2)")));
 	TPtr8 optionDes((TUint8*)&aOption, sizeof(TInt), sizeof(TInt));
 	return SetOpt(aOptionName, aOptionLevel, optionDes);	
 }
@@ -799,6 +800,7 @@ TInt CTlsConnection::SetProtocol(const TDesC& aProtocol)
  * @return Any one of the system error codes, or KErrNone on success.
  */
 {
+	// ignored
 	LOG(Log::Printf(_L("CTlsConnection::SetProtocol()")));
 	return KErrNone;
 }
@@ -871,8 +873,20 @@ TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 		iReceivingData = EFalse;
 	} else if (aStateMachine == iHandshake) {
 		iHandshaking = EFalse;
-		iHandshaked = aStateMachine->LastError() == KErrNone;
+		if (aStateMachine->LastError() == KErrNone) {
+			iHandshaked = ETrue;
+		} else {
+			// handshake failed
+//			Reset();
+			iHandshaked = EFalse;
+		}
 	}
 	return EFalse;
 }
+
+//void CTlsConnection::Reset() {
+//	if (iMbedContext) {
+//		iMbedContext->Reset();
+//	}
+//}
 

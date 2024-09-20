@@ -159,6 +159,7 @@ protected:
 	
 	const TDesC8* iData;
 	TInt* iSockXfrLength;
+	TInt iCurrentPos;
 
 };
 
@@ -175,6 +176,7 @@ inline void CSendEvent::SetData(const TDesC8* aData)
 inline void CSendEvent::Set(CStateMachine* aStateMachine)
 {
 	iStateMachine = aStateMachine;
+	iCurrentPos = 0;
 }
 
 // handshake

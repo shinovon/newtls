@@ -144,6 +144,7 @@ protected:
 	void ConstructL(MGenericSecureSocket& aSocket, const TDesC& aProtocol);
 	
 	void Init();
+//	void Reset();
 protected:
 	TDialogMode			iDialogMode;
 	CX509Certificate* iClientCert;
