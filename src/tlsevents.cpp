@@ -13,9 +13,20 @@
 
 LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 {
-	// TODO same thing i did with receiving
 	LOG(Log::Printf(_L("+send_callback %d"), len));
-	CRecvEvent* s = (CRecvEvent*) ctx;
+	CBio* s = (CBio*) ctx;
+	
+	if (s->iWriteState == 1) {
+		s->iWriteState = 0;
+		return len;
+	}
+	
+	if (s->iWriteState == 0) {
+		s->iWritePtr = (const TUint8*) buf;
+		s->iWriteLength = len;
+		s->iWriteState = 2;
+		return MBEDTLS_ERR_SSL_WANT_WRITE;
+	}
 	
 	const TPtrC8 des((const TUint8*) buf, len);
 	
@@ -30,20 +41,20 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
 	LOG(Log::Printf(_L("+recv_callback %d"), len));
-	CRecvEvent* s = (CRecvEvent*) ctx;
+	CBio* s = (CBio*) ctx;
 	
 	TPtr8 des = TPtr8(buf, 0, len);
 	
-	if (s->iReadState == 1 && s->iBufferState) {
+	if (s->iReadState == 1) {
+		// TODO check for overflow
 		des.Copy(s->iPtrHBuf);
-		s->iBufferState = 0;
-		s->iReadState = 2;
+		s->iReadState = 0;
 		return s->iPtrHBuf.Length();
 	}
 	
-	if (s->iReadState == 2) {
+	if (s->iReadState == 0) {
 		s->iReadLength = len;
-		s->iReadState = 0;
+		s->iReadState = 2;
 		return MBEDTLS_ERR_SSL_WANT_READ;
 	}
 	
@@ -57,6 +68,82 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	if (ret == KErrEof) ret = 0;
 	LOG(Log::Printf(_L("-recv_callback %d (%d)"), ret, stat.Int()));
 	return ret;
+}
+
+//
+
+CBio* CBio::NewL(CTlsConnection& aTlsConnection)
+{
+	CBio* self = new(ELeave) CBio(aTlsConnection);
+	CleanupStack::PushL(self);
+	self->ConstructL(aTlsConnection);
+	CleanupStack::Pop();
+	return self;
+}
+
+CBio::CBio(CTlsConnection& aTlsConnection) :
+  iSocket(aTlsConnection.Socket()),
+  iPtrHBuf(0, 0),
+  iReadState(0),
+  iWriteState(0)
+{
+	aTlsConnection.MbedContext().SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
+}
+
+void CBio::ConstructL(CTlsConnection& aTlsConnection)
+{
+	if (!iDataIn) {
+		iDataIn = HBufC8::NewL(0x1000);
+	}
+}
+
+CBio::~CBio()
+{
+	delete iDataIn;
+}
+
+void CBio::Recv(TRequestStatus*& aStatus)
+{
+	LOG(Log::Printf(_L("Receive data")));
+	if (iReadState == 1) {
+		User::RequestComplete(aStatus, KErrNone);
+		return;
+	}
+	if (iReadLength > iDataIn->Length()) {
+		delete iDataIn;
+		iDataIn = NULL;
+		iDataIn = HBufC8::NewL(iReadLength);
+	}
+	iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, iReadLength ? iReadLength : 5);
+	TSockXfrLength len;
+	iSocket.Recv(iPtrHBuf, 0, *aStatus);
+	iReadState = 1;
+	iReadLength = 0;
+}
+
+void CBio::Send(TRequestStatus*& aStatus)
+{
+	if (iWriteState == 1 || !iWritePtr) {
+		// should not happen
+		User::RequestComplete(aStatus, KErrNone);
+		return;
+	}
+	const TPtrC8 des((const TUint8*) iWritePtr, iWriteLength);
+	
+	iSocket.Send(des, 0, *aStatus);
+	iWriteState = 1;
+	iWritePtr = NULL;
+}
+
+void CBio::ClearRecvBuffer()
+{
+	iReadState = 0;
+}
+
+void CBio::ClearSendBuffer()
+{
+	iWritePtr = NULL;
+	iWriteState = 0;
 }
 
 // recvdata
@@ -146,36 +233,26 @@ void CRecvData::DoCancel()
 
 // recvevent
 
-CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket) :
+CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, CBio& aBio) :
   CAsynchEvent(0),
-  iSocket(aSocket),
   iMbedContext(aMbedContext),
-  iPtrHBuf(0, 0),
-  iReadState(0),
-  iBufferState(0)
+  iBio(aBio)
 {
-	aMbedContext.SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
 }
 
 CRecvEvent::~CRecvEvent()
 {
 	LOG(Log::Printf(_L("CRecvEvent::~CRecvEvent()")));
-	delete iDataIn;
 }
 
 void CRecvEvent::CancelAll()
 {
-	iReadState = 0;
-	iBufferState = 0;
+	iBio.ClearRecvBuffer();
 }
 
 void CRecvEvent::ReConstruct(CStateMachine* aStateMachine)
 {
 	iStateMachine = aStateMachine;
-	if (!iDataIn) {
-		iDataIn = HBufC8::NewL(0x1000);
-	}
-	iReadState = iBufferState == 1 ? 1 : 0;
 }
 
 CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
@@ -184,59 +261,35 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	TRequestStatus* pStatus = &aStatus;
 	
 	TInt ret = KErrNone;
-	switch (iReadState) {
-	case 0: // receive data
-	{
-		LOG(Log::Printf(_L("Receive data")));
-		if (iReadLength > iDataIn->Length()) {
-			delete iDataIn;
-			iDataIn = NULL;
-			iDataIn = HBufC8::NewL(iReadLength);
-		}
-		iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, iReadLength ? iReadLength : 5);
-		TSockXfrLength len;
-		iSocket.Recv(iPtrHBuf, 0, aStatus);
-		iBufferState = 1;
-		iReadState = 1;
-		iReadLength = 0;
+	if (iStateMachine->LastError() != KErrNone) {
+		User::RequestComplete(pStatus, iStateMachine->LastError());
+		return NULL;
+	}
+	TInt offset = iUserData->Length();
+	TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
+	if (res == MBEDTLS_ERR_SSL_WANT_READ) {
+		iBio.Recv(pStatus);
 		return this;
 	}
-	case 1: // process received data
-	case 2: // read data (see recv_callback)
-	{
-		if (iStateMachine->LastError() != KErrNone) {
-			User::RequestComplete(pStatus, ret);
-			return NULL;
-		}
-		TInt offset = iUserData->Length();
-		TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
-		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-			User::RequestComplete(pStatus, KErrNone);
-			return this;
-		}
-		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
-			LOG(Log::Printf(_L("Ticket received on read")));
-			if (!iBufferState) iReadState = 0;
-			User::RequestComplete(pStatus, KErrNone);
-			return this;
-		}
-		if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-			ret = KErrEof;
-			LOG(Log::Printf(_L("Read eof")));
-			break;
-		}
-		if (res < 0) {
-			ret = res;
-			LOG(Log::Printf(_L("Read error: %x"), -res));
-			break;
-		}
+	if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+		iBio.Send(pStatus);
+		return this;
+	}
+	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+		LOG(Log::Printf(_L("Ticket received on read")));
+		User::RequestComplete(pStatus, KErrNone);
+		return this;
+	}
+	if (res == 0 || res == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+		ret = KErrEof;
+		LOG(Log::Printf(_L("Read eof")));
+	} else if (res < 0) {
+		ret = res;
+		LOG(Log::Printf(_L("Read error: %x"), -res));
+	}
 //		LOG(Log::Printf(_L("Recv %d"), res));
 
-		iUserData->SetLength(offset + res);
-		iReadState = 0;
-	}
-	break;
-	}
+	iUserData->SetLength(offset + res);
 	
 	User::RequestComplete(pStatus, ret);
 	return NULL;
@@ -337,9 +390,10 @@ void CSendData::DoCancel()
 
 // sendevent
 
-CSendEvent::CSendEvent(CMbedContext& aMbedContext) :
+CSendEvent::CSendEvent(CMbedContext& aMbedContext, CBio& aBio) :
   CAsynchEvent(0),
-  iMbedContext(aMbedContext)
+  iMbedContext(aMbedContext),
+  iBio(aBio)
 {
 }
 
@@ -356,18 +410,28 @@ void CSendEvent::ReConstruct(CStateMachine* aStateMachine, TInt aCurrentPos)
 
 void CSendEvent::CancelAll()
 {
-	
+	iBio.ClearSendBuffer();
 }
 
 CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 {
 	TRequestStatus* pStatus = &aStatus;
 	TInt ret = KErrNone;
+	if (iStateMachine->LastError() != KErrNone) {
+		User::RequestComplete(pStatus, iStateMachine->LastError());
+		return NULL;
+	}
 	if (iData) {
 		TInt res = iMbedContext.Write(iData->Ptr() + iCurrentPos, iData->Length() - iCurrentPos);
-		if (res == MBEDTLS_ERR_SSL_WANT_READ ||
-			res == MBEDTLS_ERR_SSL_WANT_WRITE ||
-			res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
+			iBio.Recv(pStatus);
+			return this;
+		}
+		if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+			iBio.Send(pStatus);
+			return this;
+		}
+		if (res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
 			res == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS || 
 			res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
 			User::RequestComplete(pStatus, KErrNone);
@@ -447,9 +511,10 @@ void CHandshake::DoCancel()
 
 // handshake event
 
-CHandshakeEvent::CHandshakeEvent(CMbedContext& aMbedContext) :
+CHandshakeEvent::CHandshakeEvent(CMbedContext& aMbedContext, CBio& aBio) :
   CAsynchEvent(NULL),
-  iMbedContext(aMbedContext)
+  iMbedContext(aMbedContext),
+  iBio(aBio)
 {
 }
 
@@ -466,9 +531,20 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 {
 	LOG(Log::Printf(_L("+CHandshakeEvent::ProcessL()")));
 	TRequestStatus* pStatus = &aStatus;
+	if (iStateMachine->LastError() != KErrNone) {
+		User::RequestComplete(pStatus, iStateMachine->LastError());
+		return NULL;
+	}
 	TInt res = iHandshaked ? iMbedContext.Renegotiate() : iMbedContext.Handshake();
-	if (res == MBEDTLS_ERR_SSL_WANT_WRITE ||
-		res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
+	if (res == MBEDTLS_ERR_SSL_WANT_READ) {
+		iBio.Recv(pStatus);
+		return this;
+	}
+	if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+		iBio.Send(pStatus);
+		return this;
+	}
+	if (res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
 		res == MBEDTLS_ERR_SSL_CRYPTO_IN_PROGRESS || 
 		res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
 		User::RequestComplete(pStatus, KErrNone);

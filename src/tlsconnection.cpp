@@ -119,6 +119,10 @@ CTlsConnection::~CTlsConnection()
 		delete iHandshakeEvent;
 		iHandshakeEvent = NULL;
 	}
+	if (iBio) {
+		delete iBio;
+		iBio = NULL;
+	}
 	if (iGenericSocket) {
 		delete iGenericSocket;
 		iGenericSocket = NULL;
@@ -200,14 +204,16 @@ inline void CTlsConnection::Init()
 {
 	iMbedContext = new CMbedContext();
 	iMbedContext->InitSsl();
+	
+	iBio = CBio::NewL(*this);
 
-	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, *iGenericSocket);
+	iRecvEvent = new (ELeave) CRecvEvent(*iMbedContext, *iBio);
 	iRecvData = CRecvData::NewL(*this);
 	
-	iSendEvent = new (ELeave) CSendEvent(*iMbedContext);
+	iSendEvent = new (ELeave) CSendEvent(*iMbedContext, *iBio);
 	iSendData = CSendData::NewL(*this);
 	
-	iHandshakeEvent = new (ELeave) CHandshakeEvent(*iMbedContext);
+	iHandshakeEvent = new (ELeave) CHandshakeEvent(*iMbedContext, *iBio);
 	iHandshake = CHandshake::NewL(*this);
 
 	iDialogMode = EDialogModeUnattended;

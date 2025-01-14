@@ -19,6 +19,35 @@ class CRecvEvent;
 class CSendEvent;
 class CHandshakeEvent;
 
+class CBio : public CBase
+{
+public:
+	static CBio* NewL(CTlsConnection& aTlsConnection); 
+	~CBio();
+	
+	void Recv(TRequestStatus*& aStatus);
+	void Send(TRequestStatus*& aStatus);
+	
+	void ClearRecvBuffer();
+	void ClearSendBuffer();
+protected:
+	CBio(CTlsConnection& aTlsConnection);
+	void ConstructL(CTlsConnection& aTlsConnection);
+	
+	HBufC8* iDataIn;
+public:
+	MGenericSecureSocket& iSocket;
+	
+	TPtr8 iPtrHBuf;
+	TInt iReadState;
+	TInt iReadLength;
+	
+	const TUint8* iWritePtr;
+	TInt iWriteState;
+	TInt iWriteLength;
+	
+};
+
 class CRecvData : public CStateMachine
 {
 public:
@@ -62,7 +91,7 @@ inline void CRecvData::SetSockXfrLength(TInt* aLen)
 class CRecvEvent : public CAsynchEvent
 {
 public:
-	CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket);
+	CRecvEvent(CMbedContext& aMbedContext, CBio& aSocket);
 	~CRecvEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
@@ -74,22 +103,13 @@ public:
 	void ReConstruct(CStateMachine* aStateMachine);
 	
 	TDes8* UserData();
-	
-	MGenericSecureSocket& iSocket;
 
 protected:
 	CMbedContext& iMbedContext;
+	CBio& iBio;
 	
 	TDes8* iUserData;
 	TInt iUserMaxLength;
-
-	HBufC8* iDataIn;
-	
-public:
-	TPtr8 iPtrHBuf;
-	TInt iReadState;
-	TInt iReadLength;
-	TInt iBufferState;
 
 protected:
 	CRecvData& RecvData();
@@ -161,7 +181,7 @@ inline void CSendData::SetUserData(TDesC8* aData)
 class CSendEvent : public CAsynchEvent
 {
 public:
-	CSendEvent(CMbedContext& aMbedContext);
+	CSendEvent(CMbedContext& aMbedContext, CBio& aBio);
 	~CSendEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
@@ -176,6 +196,7 @@ public:
 
 protected:
 	CMbedContext& iMbedContext;
+	CBio& iBio;
 	
 	TDesC8* iData;
 	TInt* iSockXfrLength;
@@ -237,7 +258,7 @@ inline void CHandshake::Start(TRequestStatus* aClientStatus, MStateMachineNotify
 class CHandshakeEvent : public CAsynchEvent
 {
 public:
-	CHandshakeEvent(CMbedContext& aMbedContext);
+	CHandshakeEvent(CMbedContext& aMbedContext, CBio& aBio);
 	~CHandshakeEvent();
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
@@ -247,6 +268,7 @@ public:
 
 protected:
 	CMbedContext& iMbedContext;
+	CBio& iBio;
 	
 	TBool iHandshaked;
 };

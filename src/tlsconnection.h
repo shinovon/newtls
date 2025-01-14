@@ -155,6 +155,8 @@ protected:
 	CGenericSecureSocket<RSocket>* iGenericSocket; // owned
 	MGenericSecureSocket* iSocket;
 	CMbedContext* iMbedContext;
+	
+	CBio* iBio;
 
 	CHandshake* iHandshake;
 	CHandshakeEvent* iHandshakeEvent;
