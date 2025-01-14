@@ -43,6 +43,7 @@ protected:
 	CTlsConnection& iTlsConnection;
 	CRecvEvent& iRecvEvent;
 	
+	TDes8* iUserData;
 	TInt* iSockXfrLength;
 };
 
@@ -82,11 +83,12 @@ protected:
 	TDes8* iUserData;
 	TInt iUserMaxLength;
 
-	HBufC8* iHeaderData;
+	HBufC8* iDataIn;
 	
 public:
 	TPtr8 iPtrHBuf;
 	TInt iReadState;
+	TInt iReadLength;
 	TInt iBufferState;
 
 protected:
@@ -126,6 +128,9 @@ public:
 	void Suspend();
 	void Resume();
 	
+	void SetUserData(TDesC8* aData);
+	void SetSockXfrLength(TInt* aLen);
+		
 protected:
 	CSendData(CTlsConnection& aTlsConnection);
 	void ConstructL(CTlsConnection& aTlsConnection);
@@ -136,6 +141,10 @@ protected:
 protected:
 	CTlsConnection& iTlsConnection;
 	CSendEvent& iSendEvent;
+	
+	TDesC8* iUserData;
+	TInt* iSockXfrLength;
+	TInt iCurrentPos;
 };
 
 inline void CSendData::Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify)
@@ -143,6 +152,10 @@ inline void CSendData::Start(TRequestStatus* aClientStatus, MStateMachineNotify*
 	CStateMachine::Start(aClientStatus, NULL, aStateMachineNotify);
 }
 
+inline void CSendData::SetUserData(TDesC8* aData)
+{
+	iUserData = aData;
+}
 
 
 class CSendEvent : public CAsynchEvent
@@ -153,29 +166,41 @@ public:
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
 	
-	void SetUserData(const TDesC8* aData);
-	void SetSockXfrLength(TInt* aLen);
+	void SetUserData(TDesC8* aData);
+	TDesC8* UserData() const;
+	TInt CurrentPos() const;
+	void ResetCurrentPos();
 	
 	void CancelAll();
-	void ReConstruct(CStateMachine* aStateMachine);
+	void ReConstruct(CStateMachine* aStateMachine, TInt aCurrentPos);
 
 protected:
 	CMbedContext& iMbedContext;
 	
-	const TDesC8* iData;
+	TDesC8* iData;
 	TInt* iSockXfrLength;
 	TInt iCurrentPos;
 
 };
 
-inline void CSendEvent::SetSockXfrLength(TInt* aLen)
+inline TDesC8* CSendEvent::UserData() const
 {
-	iSockXfrLength = aLen;
+	return iData;
 }
 
-inline void CSendEvent::SetUserData(const TDesC8* aData)
+inline void CSendEvent::SetUserData(TDesC8* aData)
 {
 	iData = aData;
+}
+
+inline TInt CSendEvent::CurrentPos() const
+{
+	return iCurrentPos;
+}
+
+inline void CSendEvent::ResetCurrentPos()
+{
+	iCurrentPos = 0;
 }
 
 // handshake
@@ -222,6 +247,8 @@ public:
 
 protected:
 	CMbedContext& iMbedContext;
+	
+	TBool iHandshaked;
 };
 
 inline void CHandshakeEvent::Set(CStateMachine* aStateMachine)

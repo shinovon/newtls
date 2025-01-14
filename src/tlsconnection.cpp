@@ -502,8 +502,19 @@ void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::RenegotiateHandshake()")));
-	// TODO renegotiate
-	StartClientHandshake(aStatus);
+	TRequestStatus* pStatus = &aStatus;
+	if (!iSendData || !iRecvData || !iDataMode) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return;
+	}
+	if (iHandshaking || iReceivingData || iSendingData) {
+		User::RequestComplete(pStatus, KErrInUse);
+		return;
+	}
+	iSendData->Suspend();
+	iRecvData->Suspend();
+	iRecvEvent->CancelAll();
+	StartClientHandshakeStateMachine(pStatus);
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
@@ -517,7 +528,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
  */
 {
 	if (SendData(aDesc, aStatus))
-		iSendEvent->SetSockXfrLength(NULL);
+		iSendData->SetSockXfrLength(NULL);
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -532,7 +543,7 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
  */
 {
 	if (SendData(aDesc, aStatus))
-		iSendEvent->SetSockXfrLength(&aLen());
+		iSendData->SetSockXfrLength(&aLen());
 }
 
 const CX509Certificate* CTlsConnection::ServerCert()
@@ -548,7 +559,7 @@ const CX509Certificate* CTlsConnection::ServerCert()
  */ 
 {
 	LOG(Log::Printf(_L("CTlsConnection::ServerCert()")));
-	// TODO server certificate
+	// TODO server certificate parsing
 	return NULL;
 }
 
@@ -766,16 +777,11 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
 {
 	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake()")));
 	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshake) {
-		User::RequestComplete(pStatus, KErrNotReady);
-		return;
-	}
-	if (iHandshaking || iReceivingData || iSendingData) {
+	if (iHandshaking || iDataMode || iReceivingData || iSendingData) {
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
-	iHandshake->Resume();
-	iHandshake->Start(pStatus, this);
+	StartClientHandshakeStateMachine(pStatus);
 }
 
 void CTlsConnection::StartServerHandshake(TRequestStatus& aStatus)
@@ -811,6 +817,24 @@ TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 		iHandshaking = EFalse;
 		if (aStateMachine->LastError() == KErrNone) {
 			iHandshaked = ETrue;
+			
+			if (iDataMode) { // renegotiation
+				iSendData->Resume();
+				iRecvData->Resume();
+				
+				if (iSendData->ClientStatus()) {
+					iSendData->Start(iSendData->ClientStatus(), this);
+				}
+				
+				if (!iRecvData->IsActive() && iRecvData->ClientStatus()) {
+					iRecvData->Start(iRecvData->ClientStatus(), this);
+				}
+			} else if (!iDataMode) {
+				iDataMode = ETrue;
+
+				iSendData->Resume();
+				iRecvData->Resume();
+			}
 		} else {
 			// handshake failed
 //			Reset();
@@ -820,7 +844,7 @@ TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 	return EFalse;
 }
 
-TBool CTlsConnection::SendData( const TDesC8& aDesc, TRequestStatus& aStatus )
+TBool CTlsConnection::SendData(const TDesC8& aDesc, TRequestStatus& aStatus)
 /**
  * Starts the Application data transmission state machine, 
  * which sends data to a remote Server.
@@ -831,8 +855,7 @@ TBool CTlsConnection::SendData( const TDesC8& aDesc, TRequestStatus& aStatus )
  */
 {
 	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iSendData) {
-		// TODO handle Send() call when still negotiating
+	if (!iSendData) {
 		User::RequestComplete(pStatus, KErrNotReady);
 		return EFalse;
 	}
@@ -842,16 +865,21 @@ TBool CTlsConnection::SendData( const TDesC8& aDesc, TRequestStatus& aStatus )
 		return EFalse;
 	}
 	LOG(Log::Printf(_L("CTlsConnection::Send(1)")));
-	iSendingData = ETrue;
-	iSendEvent->SetUserData(&aDesc);
-
-	iSendData->Resume();
-	iSendData->Start(pStatus, this);
+	if (!iHandshaked) {
+		iSendData->SetUserData((TDesC8*) &aDesc);
+		iSendData->SetClientStatus(&aStatus);
+	} else {
+		iSendingData = ETrue;
+		iSendEvent->SetUserData((TDesC8*) &aDesc);
+		iSendEvent->ResetCurrentPos();
+	
+		iSendData->Start(pStatus, this);
+	}
 	
 	return ETrue;
 }
 
-TBool CTlsConnection::RecvData( TDes8& aDesc, TRequestStatus& aStatus )
+TBool CTlsConnection::RecvData(TDes8& aDesc, TRequestStatus& aStatus)
 /**
  * Starts the Application data reception state machine, 
  * which receives data from a remote Server.
@@ -862,7 +890,7 @@ TBool CTlsConnection::RecvData( TDes8& aDesc, TRequestStatus& aStatus )
  */
 {
 	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iRecvData) {
+	if (!iRecvData) {
 		User::RequestComplete(pStatus, KErrNotReady);
 		return EFalse;
 	}
@@ -876,10 +904,24 @@ TBool CTlsConnection::RecvData( TDes8& aDesc, TRequestStatus& aStatus )
 	iRecvEvent->SetUserData(&aDesc);
 	iRecvEvent->SetUserMaxLength(aDesc.MaxLength());
 	
-	iRecvData->Resume();
 	iRecvData->Start(pStatus, this);
 	
 	return ETrue;
+}
+
+void CTlsConnection::StartClientHandshakeStateMachine(TRequestStatus* aStatus)
+/**
+ * Creates and starts the Handshake negotiation state machine, 
+ * which initiates negotiations with the remote Server.
+ */
+{
+	if (!iHandshake) {
+		User::RequestComplete(aStatus, KErrNotReady);
+		return;
+	}
+	
+	iHandshake->Resume();
+	iHandshake->Start(aStatus, this);
 }
 
 // not needed since there is no any example of connection reusage

@@ -34,7 +34,7 @@ public:
 	TInt Handshake();
 	
 	// mbedtls_ssl_renegotiate
-//	TInt Renegotiate();
+	TInt Renegotiate();
 	
 //	TInt ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen);
 //	TInt LoadSession(const unsigned char *aData, TInt aLen);

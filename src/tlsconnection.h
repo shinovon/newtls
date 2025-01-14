@@ -126,6 +126,8 @@ public:
 	// MStateMachineNotify interface
 	virtual TBool OnCompletion(CStateMachine* aStateMachine); 
 	
+	void StartClientHandshakeStateMachine(TRequestStatus* aStatus);
+	
 	CMbedContext& MbedContext();
 	CRecvEvent& RecvEvent();
 	CSendEvent& SendEvent();
@@ -167,6 +169,7 @@ protected:
 	TBool iSendingData;
 	TBool iHandshaking;
 	TBool iHandshaked;
+	TBool iDataMode;
 	
 };
 
