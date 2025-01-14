@@ -76,18 +76,20 @@ CRecvData::~CRecvData()
 void CRecvData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CRecvData::ConstructL()")));
-	Resume(aTlsConnection);
+	Resume();
 }
 
 void CRecvData::Suspend()
 {
 	LOG(Log::Printf(_L("CRecvData::Suspend()")));
-	iRecvEvent.SetData(NULL);
+	iRecvEvent.SetUserData(NULL);
 }
 
-void CRecvData::Resume(CTlsConnection& aTlsConnection)
+void CRecvData::Resume()
 {
-	iRecvEvent.Set(this);
+	iRecvEvent.SetUserData(iUserData);
+	iRecvEvent.SetUserMaxLength(iUserData ? iUserData->MaxLength() : 0);
+	iRecvEvent.ReConstruct(this);
 	if (!iActiveEvent) {
 		iActiveEvent = &iRecvEvent;
 	}
@@ -97,7 +99,7 @@ void CRecvData::OnCompletion()
 {
 	LOG(Log::Printf(_L("CRecvData::OnCompletion()")));
 	if (iLastError == KErrNone && iStatus.Int() == KErrNone) {
-		TDes8* pData = iRecvEvent.Data();
+		TDes8* pData = iRecvEvent.UserData();
 		if (pData) {
 			if (iSockXfrLength && pData->Length()) {
 				*iSockXfrLength = pData->Length();
@@ -110,7 +112,8 @@ void CRecvData::OnCompletion()
 		}
 	}
 	
-	iRecvEvent.SetData(NULL);
+	iRecvEvent.SetUserData(NULL);
+	iRecvEvent.SetUserMaxLength(0);
 	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;
@@ -144,7 +147,7 @@ CRecvEvent::CRecvEvent(CMbedContext& aMbedContext, MGenericSecureSocket& aSocket
 CRecvEvent::~CRecvEvent()
 {
 	LOG(Log::Printf(_L("CRecvEvent::~CRecvEvent()")));
-	delete iDataIn;
+	delete iHeaderData;
 }
 
 void CRecvEvent::CancelAll()
@@ -153,14 +156,13 @@ void CRecvEvent::CancelAll()
 	iBufferState = 0;
 }
 
-void CRecvEvent::Set(CStateMachine* aStateMachine)
+void CRecvEvent::ReConstruct(CStateMachine* aStateMachine)
 {
 	iStateMachine = aStateMachine;
-	if (!iDataIn) {
-		iDataIn = HBufC8::NewL(8);
+	if (!iHeaderData) {
+		iHeaderData = HBufC8::NewL(8);
 	}
 	iReadState = iBufferState == 1 ? 1 : 0;
-	iCurrentPos = 0;
 }
 
 CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
@@ -173,7 +175,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	case 0: // read tls header
 	{
 		LOG(Log::Printf(_L("Read header")));
-		iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, 5);
+		iPtrHBuf.Set((TUint8*)iHeaderData->Des().Ptr(), 0, 5);
 		TSockXfrLength len;
 		iSocket.Recv(iPtrHBuf, 0, aStatus);
 		iBufferState = 1;
@@ -187,7 +189,8 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 			User::RequestComplete(pStatus, ret);
 			return NULL;
 		}
-		TInt res = iMbedContext.Read((unsigned char*) iData->Ptr() + iCurrentPos, iData->MaxLength() - iCurrentPos);
+		TInt offset = iUserData->Length();
+		TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
 		if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
 			LOG(Log::Printf(_L("Ticket received on read")));
 			if (!iBufferState) iReadState = 0;
@@ -212,8 +215,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		}
 //		LOG(Log::Printf(_L("Recv %d"), res));
 
-		iData->SetLength(iCurrentPos + res);
-		iCurrentPos += res;
+		iUserData->SetLength(offset + res);
 	}
 	break;
 	case 3: // reconnect
@@ -265,19 +267,19 @@ CSendData::~CSendData()
 void CSendData::ConstructL(CTlsConnection& aTlsConnection)
 {
 	LOG(Log::Printf(_L("CSendData::ConstructL()")));
-	Resume(aTlsConnection);
+	Resume();
 }
 
 void CSendData::Suspend()
 {
 	LOG(Log::Printf(_L("CSendData::Suspend()")));
-	iSendEvent.SetData(NULL);
+	iSendEvent.SetUserData(NULL);
 	iSendEvent.SetSockXfrLength(NULL);
 }
 
-void CSendData::Resume(CTlsConnection& aTlsConnection)
+void CSendData::Resume()
 {
-	iSendEvent.Set(this);
+	iSendEvent.ReConstruct(this);
 	if (!iActiveEvent) {
 		iActiveEvent = &iSendEvent;
 	}
@@ -287,7 +289,7 @@ void CSendData::OnCompletion()
 {
 	LOG(Log::Printf(_L("CSendData::OnCompletion()")));
 	
-	iSendEvent.SetData(NULL);
+	iSendEvent.SetUserData(NULL);
 	iSendEvent.SetSockXfrLength(NULL);
 	
 	if (iStatus.Int() == KRequestPending) {
@@ -318,6 +320,12 @@ CSendEvent::~CSendEvent()
 {
 	LOG(Log::Printf(_L("CSendData::~CSendEvent")));
 	SetSockXfrLength(NULL);
+}
+
+void CSendEvent::ReConstruct(CStateMachine* aStateMachine)
+{
+	iStateMachine = aStateMachine;
+	iCurrentPos = 0;
 }
 
 void CSendEvent::CancelAll()

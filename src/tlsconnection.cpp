@@ -465,25 +465,8 @@ void CTlsConnection::Recv(TDes8& aDesc, TRequestStatus & aStatus)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::Recv()")));
-	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iRecvData) {
-		User::RequestComplete(pStatus, KErrNotReady);
-		return;
-	}
-	if (iReceivingData) {
-		LOG(Log::Printf(_L("CTlsConnection::Recv() Busy")));
-		User::RequestComplete(pStatus, KErrInUse);
-		return;
-	}
-	iReceivingData = ETrue;
-	aDesc.Zero();
-
-	iRecvEvent->SetData(&aDesc);
-
-	iRecvData->Resume(*this); 
-	iRecvData->SetSockXfrLength(NULL);
-	iRecvData->Start(pStatus, this);
-	
+	if (RecvData(aDesc, aStatus))
+		iRecvData->SetSockXfrLength(NULL);
 }
 
 void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -501,25 +484,8 @@ void CTlsConnection::RecvOneOrMore(TDes8& aDesc, TRequestStatus& aStatus, TSockX
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore(): %d"), aDesc.MaxLength()));
-	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iRecvData) {
-		User::RequestComplete(pStatus, KErrNotReady);
-		return;
-	}
-	if (iReceivingData) {
-		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Busy")));
-		User::RequestComplete(pStatus, KErrInUse);
-		return;
-	}
-	iReceivingData = ETrue;
-	aDesc.Zero();
-
-	iRecvEvent->SetData(&aDesc);
-
-	iRecvData->Resume(*this);
-	iRecvData->SetSockXfrLength(&aLen());
-	iRecvData->Start(pStatus, this);
-	
+	if (RecvData(aDesc, aStatus))
+		iRecvData->SetSockXfrLength(&aLen());
 }
 
 void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
@@ -550,23 +516,8 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus)
  * error codes. 
  */
 {
-	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iSendData) {
-		User::RequestComplete(pStatus, KErrNotReady);
-		return;
-	}
-	if (iSendingData) {
-		LOG(Log::Printf(_L("CTlsConnection::Send(1) Busy")));
-		User::RequestComplete(pStatus, KErrInUse);
-		return;
-	}
-	LOG(Log::Printf(_L("CTlsConnection::Send(1)")));
-	iSendingData = ETrue;
-	iSendEvent->SetData(&aDesc);
-	iSendEvent->SetSockXfrLength(NULL);
-	
-	iSendData->Resume(*this);
-	iSendData->Start(pStatus, this);
+	if (SendData(aDesc, aStatus))
+		iSendEvent->SetSockXfrLength(NULL);
 }
 
 void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfrLength& aLen)
@@ -580,23 +531,8 @@ void CTlsConnection::Send(const TDesC8& aDesc, TRequestStatus& aStatus, TSockXfr
  * @param aLen Filled in with amount of data sent before completion 
  */
 {
-	TRequestStatus* pStatus = &aStatus;
-	if (!iHandshaked || !iSendData) {
-		User::RequestComplete(pStatus, KErrNotReady);
-		return;
-	}
-	if (iSendingData) {
-		LOG(Log::Printf(_L("CTlsConnection::Send(2) Busy")));
-		User::RequestComplete(pStatus, KErrInUse);
-		return;
-	}
-	LOG(Log::Printf(_L("CTlsConnection::Send(2)")));
-	iSendingData = ETrue;
-	iSendEvent->SetData(&aDesc);
-	iSendEvent->SetSockXfrLength(&aLen());
-	
-	iSendData->Resume(*this);
-	iSendData->Start(pStatus, this);
+	if (SendData(aDesc, aStatus))
+		iSendEvent->SetSockXfrLength(&aLen());
 }
 
 const CX509Certificate* CTlsConnection::ServerCert()
@@ -884,6 +820,69 @@ TBool CTlsConnection::OnCompletion(CStateMachine* aStateMachine)
 	return EFalse;
 }
 
+TBool CTlsConnection::SendData( const TDesC8& aDesc, TRequestStatus& aStatus )
+/**
+ * Starts the Application data transmission state machine, 
+ * which sends data to a remote Server.
+ *
+ * @param aDesc Reference to the user's descriptor (data buffer)
+ * @param aClientStatus TRequestStatus object that completes when data transmission
+ * is finished.
+ */
+{
+	TRequestStatus* pStatus = &aStatus;
+	if (!iHandshaked || !iSendData) {
+		// TODO handle Send() call when still negotiating
+		User::RequestComplete(pStatus, KErrNotReady);
+		return EFalse;
+	}
+	if (iSendingData) {
+		LOG(Log::Printf(_L("CTlsConnection::Send(1) Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return EFalse;
+	}
+	LOG(Log::Printf(_L("CTlsConnection::Send(1)")));
+	iSendingData = ETrue;
+	iSendEvent->SetUserData(&aDesc);
+
+	iSendData->Resume();
+	iSendData->Start(pStatus, this);
+	
+	return ETrue;
+}
+
+TBool CTlsConnection::RecvData( TDes8& aDesc, TRequestStatus& aStatus )
+/**
+ * Starts the Application data reception state machine, 
+ * which receives data from a remote Server.
+ *
+ * @param aDesc Reference to the user's descriptor (data buffer)
+ * @param aClientStatus TRequestStatus object that completes when data reception is 
+ * finished.
+ */
+{
+	TRequestStatus* pStatus = &aStatus;
+	if (!iHandshaked || !iRecvData) {
+		User::RequestComplete(pStatus, KErrNotReady);
+		return EFalse;
+	}
+	if (iReceivingData) {
+		LOG(Log::Printf(_L("CTlsConnection::RecvOneOrMore() Busy")));
+		User::RequestComplete(pStatus, KErrInUse);
+		return EFalse;
+	}
+	iReceivingData = ETrue;
+	
+	iRecvEvent->SetUserData(&aDesc);
+	iRecvEvent->SetUserMaxLength(aDesc.MaxLength());
+	
+	iRecvData->Resume();
+	iRecvData->Start(pStatus, this);
+	
+	return ETrue;
+}
+
+// not needed since there is no any example of connection reusage
 //void CTlsConnection::Reset() {
 //	if (iMbedContext) {
 //		iMbedContext->Reset();

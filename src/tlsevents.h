@@ -28,7 +28,7 @@ public:
 	void Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify);
 	
 	void Suspend();
-	void Resume(CTlsConnection& aTlsConnection);
+	void Resume();
 	
 	void SetSockXfrLength(TInt* aLen);
 
@@ -66,22 +66,23 @@ public:
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
 	
-	void SetData(TDes8* aData);
+	void SetUserData(TDes8* aData);
+	void SetUserMaxLength(TInt aMaxLength);
 	
 	void CancelAll();
-	void Set(CStateMachine* aStateMachine);
+	void ReConstruct(CStateMachine* aStateMachine);
 	
-	TDes8* Data();
+	TDes8* UserData();
 	
 	MGenericSecureSocket& iSocket;
 
 protected:
 	CMbedContext& iMbedContext;
 	
-	TDes8* iData;
-	TInt iCurrentPos;
-	
-	HBufC8* iDataIn;
+	TDes8* iUserData;
+	TInt iUserMaxLength;
+
+	HBufC8* iHeaderData;
 	
 public:
 	TPtr8 iPtrHBuf;
@@ -93,19 +94,23 @@ protected:
 
 };
 
-inline void CRecvEvent::SetData(TDes8* aData)
+inline void CRecvEvent::SetUserData(TDes8* aData)
 {
-	iData = aData;
+	iUserData = aData;
 }
 
-inline TDes8* CRecvEvent::Data()
+inline TDes8* CRecvEvent::UserData()
 {
-	return iData;
+	return iUserData;
 }
 
 inline CRecvData& CRecvEvent::RecvData()
 {
 	return (CRecvData&) *iStateMachine;
+}
+
+inline void CRecvEvent::SetUserMaxLength(TInt aMaxLength) {
+	iUserMaxLength = aMaxLength;
 }
 
 //
@@ -119,7 +124,7 @@ public:
 	void Start(TRequestStatus* aClientStatus, MStateMachineNotify* aStateMachineNotify);
 	
 	void Suspend();
-	void Resume(CTlsConnection& aTlsConnection);
+	void Resume();
 	
 protected:
 	CSendData(CTlsConnection& aTlsConnection);
@@ -148,11 +153,11 @@ public:
 	
 	virtual CAsynchEvent* ProcessL(TRequestStatus& aStatus);
 	
-	void SetData(const TDesC8* aData);
+	void SetUserData(const TDesC8* aData);
 	void SetSockXfrLength(TInt* aLen);
 	
 	void CancelAll();
-	void Set(CStateMachine* aStateMachine);
+	void ReConstruct(CStateMachine* aStateMachine);
 
 protected:
 	CMbedContext& iMbedContext;
@@ -168,15 +173,9 @@ inline void CSendEvent::SetSockXfrLength(TInt* aLen)
 	iSockXfrLength = aLen;
 }
 
-inline void CSendEvent::SetData(const TDesC8* aData)
+inline void CSendEvent::SetUserData(const TDesC8* aData)
 {
 	iData = aData;
-}
-
-inline void CSendEvent::Set(CStateMachine* aStateMachine)
-{
-	iStateMachine = aStateMachine;
-	iCurrentPos = 0;
 }
 
 // handshake

@@ -135,13 +135,13 @@ public:
 	// Methods from CActive
 	void RunL();
 	void DoCancel();
-	
-	void DoHandshake();
 
 protected:
 	CTlsConnection(); 
 	void ConstructL(RSocket& aSocket, const TDesC& aProtocol);
 	void ConstructL(MGenericSecureSocket& aSocket, const TDesC& aProtocol);
+	TBool SendData(const TDesC8& aDesc, TRequestStatus& aStatus);
+	TBool RecvData(TDes8& aDesc, TRequestStatus& aStatus);
 	
 	void Init();
 //	void Reset();
