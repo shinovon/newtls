@@ -16,7 +16,7 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 	LOG(Log::Printf(_L("+send_callback %d"), len));
 	CBio* s = (CBio*) ctx;
 	
-	if (s->iWriteState == 1) {
+	if (s->iWriteState == 1 && s->iWriteLength == len) {
 		s->iWriteState = 0;
 		return len;
 	}
@@ -47,6 +47,10 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	
 	if (s->iReadState == 1) {
 		// TODO check for overflow
+		if (s->iPtrHBuf.Length() > len) {
+			User::Panic(_L("newtls"), 1);
+			return 0;
+		}
 		des.Copy(s->iPtrHBuf);
 		s->iReadState = 0;
 		return s->iPtrHBuf.Length();
@@ -289,6 +293,9 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	}
 //		LOG(Log::Printf(_L("Recv %d"), res));
 
+	if (offset + res > iUserData->MaxLength()) {
+		User::Panic(_L("newtls"), 2);
+	}
 	iUserData->SetLength(offset + res);
 	
 	User::RequestComplete(pStatus, ret);
