@@ -339,9 +339,9 @@ void CTlsConnection::Close()
 {
 	LOG(Log::Printf(_L("CTlsConnection::Close()")));
 	CancelAll();
-	if (iMbedContext) {
-		iMbedContext->SslCloseNotify();
-	}
+//	if (iMbedContext) {
+//		iMbedContext->SslCloseNotify();
+//	}
 	if (iSocket) {
 		iSocket->Close();
 	}
