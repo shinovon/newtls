@@ -95,6 +95,14 @@ CTlsConnection::~CTlsConnection()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
+	if (iHandshake) {
+		delete iHandshake;
+		iHandshake = NULL;
+	}
+	if (iHandshakeEvent) {
+		delete iHandshakeEvent;
+		iHandshakeEvent = NULL;
+	}
 	if (iRecvData) {
 		delete iRecvData;
 		iRecvData = NULL;
@@ -110,14 +118,6 @@ CTlsConnection::~CTlsConnection()
 	if (iSendEvent) {
 		delete iSendEvent;
 		iSendEvent = NULL;
-	}
-	if (iHandshake) {
-		delete iHandshake;
-		iHandshake = NULL;
-	}
-	if (iHandshakeEvent) {
-		delete iHandshakeEvent;
-		iHandshakeEvent = NULL;
 	}
 	if (iBio) {
 		delete iBio;
@@ -254,11 +254,11 @@ void CTlsConnection::CancelAll()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
+	CancelRecv();
+	CancelSend();
 	if (iHandshake) {
 		iHandshake->Cancel(KErrNone);
 	}
-	CancelRecv();
-	CancelSend();
 }
 
 void CTlsConnection::CancelHandshake()

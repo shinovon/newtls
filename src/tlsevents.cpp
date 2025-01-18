@@ -478,7 +478,6 @@ CHandshake::CHandshake(CTlsConnection& aTlsConnection) :
 CHandshake::~CHandshake()
 {
 	LOG(Log::Printf(_L("CHandshake::~CHandshake()")));
-	Cancel(KErrNone);
 }
 
 void CHandshake::ConstructL()
