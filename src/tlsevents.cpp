@@ -40,8 +40,9 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 
 LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
-	LOG(Log::Printf(_L("+recv_callback %d"), len));
+//	LOG(Log::Printf(_L("+recv_callback %d"), len));
 	CBio* s = (CBio*) ctx;
+//	LOG(Log::Printf(_L("iReadState: %d"), s->iReadState));
 	
 	TPtr8 des = TPtr8(buf, 0, len);
 	
@@ -103,6 +104,7 @@ void CBio::ConstructL(CTlsConnection& aTlsConnection)
 
 CBio::~CBio()
 {
+	LOG(Log::Printf(_L("~CBio()")));
 	delete iDataIn;
 }
 
@@ -141,6 +143,7 @@ void CBio::Send(TRequestStatus*& aStatus)
 
 void CBio::ClearRecvBuffer()
 {
+	LOG(Log::Printf(_L("CRecvEvent::ClearRecvBuffer()")));
 	iReadState = 0;
 }
 
@@ -290,13 +293,14 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	} else if (res < 0) {
 		ret = res;
 		LOG(Log::Printf(_L("Read error: %x"), -res));
-	}
+	} else {
 //		LOG(Log::Printf(_L("Recv %d"), res));
 
-	if (offset + res > iUserData->MaxLength()) {
-		User::Panic(_L("newtls"), 2);
+		if (offset + res > iUserData->MaxLength()) {
+			User::Panic(_L("newtls"), 2);
+		}
+		iUserData->SetLength(offset + res);
 	}
-	iUserData->SetLength(offset + res);
 	
 	User::RequestComplete(pStatus, ret);
 	return NULL;
@@ -323,6 +327,7 @@ CSendData::CSendData(CTlsConnection& aTlsConnection) :
 CSendData::~CSendData()
 {
 	LOG(Log::Printf(_L("CSendData::~CSendData")));
+	SetSockXfrLength( NULL );
 	Cancel(KErrNone);
 }
 
