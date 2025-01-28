@@ -299,6 +299,14 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	}
 	TInt offset = iUserData->Length();
 	TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
+//	if (res == MBEDTLS_ERR_SSL_WANT_READ) {
+//		iBio.Recv(aStatus);
+//		return this;
+//	}
+//	if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+//		iBio.Send(aStatus);
+//		return this;
+//	}
 	if (res == MBEDTLS_ERR_SSL_WANT_READ || res == MBEDTLS_ERR_SSL_WANT_WRITE) {
 		User::RequestComplete(pStatus, KErrNone);
 		return this;

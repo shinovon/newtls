@@ -33,7 +33,7 @@ OPTION ARMCC --import_all_vtbl
 OPTION GCCE -fvisibility-inlines-hidden
 
 ALWAYS_BUILD_AS_ARM
-//OPTION ARMCC -O2 -Otime
+OPTION ARMCC -O2 -Otime
 
 SYSTEMINCLUDE		/epoc32/include
 SYSTEMINCLUDE		/epoc32/include/platform
@@ -42,7 +42,6 @@ SYSTEMINCLUDE		/epoc32/include/stdapis/sys
 SYSTEMINCLUDE		../../../githubprojects/mbedtls/include
 
 EPOCALLOWDLLDATA
-
 
 START WINS
     BASEADDRESS 0x54540000
