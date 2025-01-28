@@ -28,6 +28,8 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 		return MBEDTLS_ERR_SSL_WANT_WRITE;
 	}
 	
+	s->iWriteState = 0;
+	
 	const TPtrC8 des((const TUint8*) buf, len);
 	
 	TRequestStatus stat;
@@ -108,35 +110,44 @@ CBio::~CBio()
 	delete iDataIn;
 }
 
-void CBio::Recv(TRequestStatus*& aStatus)
+void CBio::Recv(TRequestStatus& aStatus)
 {
-	LOG(Log::Printf(_L("Receive data")));
+	TRequestStatus* pStatus = &aStatus;
 	if (iReadState == 1) {
-		User::RequestComplete(aStatus, KErrNone);
+		User::RequestComplete(pStatus, KErrNone);
 		return;
 	}
-	if (iReadLength > iDataIn->Length()) {
+	LOG(Log::Printf(_L("+CBio::Recv %d"), iReadLength));
+	
+	if (iReadLength > iDataIn->Des().MaxLength()) {
+		LOG(Log::Printf(_L("Reconstructing input buffer")));
 		delete iDataIn;
 		iDataIn = NULL;
 		iDataIn = HBufC8::NewL(iReadLength);
+		if (!iDataIn) {
+			User::RequestComplete(pStatus, KErrNoMemory);
+			return;
+		}
 	}
 	iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, iReadLength ? iReadLength : 5);
-	TSockXfrLength len;
-	iSocket.Recv(iPtrHBuf, 0, *aStatus);
+	iSocket.Recv(iPtrHBuf, 0, aStatus);
 	iReadState = 1;
 	iReadLength = 0;
+	LOG(Log::Printf(_L("-CBio::Recv")));
 }
 
-void CBio::Send(TRequestStatus*& aStatus)
+void CBio::Send(TRequestStatus& aStatus)
 {
 	if (iWriteState == 1 || !iWritePtr) {
 		// should not happen
-		User::RequestComplete(aStatus, KErrNone);
+		TRequestStatus* pStatus = &aStatus;
+		User::RequestComplete(pStatus, KErrNone);
 		return;
 	}
+//	LOG(Log::Printf(_L("Send data")));
 	const TPtrC8 des((const TUint8*) iWritePtr, iWriteLength);
 	
-	iSocket.Send(des, 0, *aStatus);
+	iSocket.Send(des, 0, aStatus);
 	iWriteState = 1;
 	iWritePtr = NULL;
 }
@@ -149,6 +160,7 @@ void CBio::ClearRecvBuffer()
 
 void CBio::ClearSendBuffer()
 {
+	LOG(Log::Printf(_L("CRecvEvent::ClearSendBuffer()")));
 	iWritePtr = NULL;
 	iWriteState = 0;
 }
@@ -193,6 +205,7 @@ void CRecvData::Suspend()
 
 void CRecvData::Resume()
 {
+	LOG(Log::Printf(_L("CRecvData::Resume()")));
 	iRecvEvent.SetUserData(iUserData);
 	iRecvEvent.SetUserMaxLength(iUserData ? iUserData->MaxLength() : 0);
 	iRecvEvent.ReConstruct(this);
@@ -204,7 +217,7 @@ void CRecvData::Resume()
 
 void CRecvData::OnCompletion()
 {
-	LOG(Log::Printf(_L("CRecvData::OnCompletion()")));
+	LOG(Log::Printf(_L("CRecvData::OnCompletion() %d %d"), iLastError, iStatus.Int()));
 	if (iLastError == KErrNone && iStatus.Int() == KErrNone) {
 		TDes8* pData = iRecvEvent.UserData();
 		if (pData) {
@@ -212,12 +225,15 @@ void CRecvData::OnCompletion()
 				*iSockXfrLength = pData->Length();
 			}
 			else if (pData->Length() < pData->MaxLength()) {
+//				LOG(Log::Printf(_L("Recvdata repeat %d / %d"), pData->Length(), pData->MaxLength()));
 				iActiveEvent = &iRecvEvent;
 				Start(iClientStatus, iStateMachineNotify);
 				return;
 			}
 		}
 	}
+	
+//	LOG(Log::Printf(_L("Recvdata complete")));
 	
 	iRecvEvent.SetUserData(NULL);
 	iRecvEvent.SetUserMaxLength(0);
@@ -254,6 +270,7 @@ CRecvEvent::~CRecvEvent()
 
 void CRecvEvent::CancelAll()
 {
+	LOG(Log::Printf(_L("CRecvEvent::CancelAll()")));
 	iBio.ClearRecvBuffer();
 }
 
@@ -267,19 +284,23 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	LOG(Log::Printf(_L("+CRecvEvent::ProcessL()")));
 	TRequestStatus* pStatus = &aStatus;
 	
-	TInt ret = KErrNone;
-	if (iStateMachine->LastError() != KErrNone) {
+	TInt ret = iStateMachine->LastError();
+	if (ret != KErrNone) {
 		User::RequestComplete(pStatus, iStateMachine->LastError());
 		return NULL;
 	}
-	TInt offset = iUserData->Length();
-	TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
-	if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-		iBio.Recv(pStatus);
+	if (iBio.iReadState == 0 || iBio.iReadState == 2) {
+		iBio.Recv(aStatus);
 		return this;
 	}
-	if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
-		iBio.Send(pStatus);
+	if (iBio.iWriteState == 2) {
+		iBio.Send(aStatus);
+		return this;
+	}
+	TInt offset = iUserData->Length();
+	TInt res = iMbedContext.Read((unsigned char*) iUserData->Ptr() + offset, iUserMaxLength - offset);
+	if (res == MBEDTLS_ERR_SSL_WANT_READ || res == MBEDTLS_ERR_SSL_WANT_WRITE) {
+		User::RequestComplete(pStatus, KErrNone);
 		return this;
 	}
 	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
@@ -346,6 +367,7 @@ void CSendData::Suspend()
 
 void CSendData::Resume()
 {
+	LOG(Log::Printf(_L("CSendData::Resume()")));
 	iSendEvent.SetUserData(iUserData);
 	iSendEvent.ReConstruct(this, iCurrentPos);
 	iCurrentPos = 0;
@@ -374,12 +396,14 @@ void CSendData::OnCompletion()
 		}
 		if (iLastError == KErrNone && iStatus.Int() == KErrNone) {
 			if (pAppData->Length() > iSendEvent.CurrentPos()) {
+//				LOG(Log::Printf(_L("Senddata repeat %d / %d"), pAppData->Length(), iSendEvent.CurrentPos()));
 				iActiveEvent = &iSendEvent;
 				Start(iClientStatus, iStateMachineNotify);
 				return;
 			}
 		}
 	}
+//	LOG(Log::Printf(_L("Senddata complete")));
 	
 	iSendEvent.SetUserData(NULL);
 	iSendEvent.ResetCurrentPos();
@@ -427,6 +451,7 @@ void CSendEvent::CancelAll()
 
 CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 {
+	LOG(Log::Printf(_L("+CSendEvent::ProcessL()")));
 	TRequestStatus* pStatus = &aStatus;
 	TInt ret = KErrNone;
 	if (iStateMachine->LastError() != KErrNone) {
@@ -436,11 +461,11 @@ CAsynchEvent* CSendEvent::ProcessL(TRequestStatus& aStatus)
 	if (iData) {
 		TInt res = iMbedContext.Write(iData->Ptr() + iCurrentPos, iData->Length() - iCurrentPos);
 		if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-			iBio.Recv(pStatus);
+			iBio.Recv(aStatus);
 			return this;
 		}
 		if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
-			iBio.Send(pStatus);
+			iBio.Send(aStatus);
 			return this;
 		}
 		if (res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||
@@ -548,11 +573,11 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 	}
 	TInt res = iHandshaked ? iMbedContext.Renegotiate() : iMbedContext.Handshake();
 	if (res == MBEDTLS_ERR_SSL_WANT_READ) {
-		iBio.Recv(pStatus);
+		iBio.Recv(aStatus);
 		return this;
 	}
 	if (res == MBEDTLS_ERR_SSL_WANT_WRITE) {
-		iBio.Send(pStatus);
+		iBio.Send(aStatus);
 		return this;
 	}
 	if (res == MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS ||

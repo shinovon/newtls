@@ -878,7 +878,7 @@ TBool CTlsConnection::SendData(const TDesC8& aDesc, TRequestStatus& aStatus)
 		iSendingData = ETrue;
 		iSendEvent->SetUserData((TDesC8*) &aDesc);
 		iSendEvent->ResetCurrentPos();
-	
+
 		iSendData->Start(pStatus, this);
 	}
 	

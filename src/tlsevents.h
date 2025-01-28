@@ -25,8 +25,8 @@ public:
 	static CBio* NewL(CTlsConnection& aTlsConnection); 
 	~CBio();
 	
-	void Recv(TRequestStatus*& aStatus);
-	void Send(TRequestStatus*& aStatus);
+	void Recv(TRequestStatus& aStatus);
+	void Send(TRequestStatus& aStatus);
 	
 	void ClearRecvBuffer();
 	void ClearSendBuffer();
