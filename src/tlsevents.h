@@ -6,8 +6,8 @@
 #ifndef TLSEVENTS_H
 #define TLSEVENTS_H
 
-#include <comms-infras/statemachine.h>
-#include <comms-infras/asynchevent.h>
+#include "statemachine.h"
+#include "asynchevent.h"
 
 class MGenericSecureSocket;
 class RSocket;

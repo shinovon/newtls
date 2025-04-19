@@ -16,10 +16,8 @@
 #if !defined(__SSL_LOGFILE_H__)
 #define __SSL_LOGFILE_H__
 
-#include <comms-infras/commsdebugutility.h>
-
-
 #ifdef _DEBUG
+#include <comms-infras/commsdebugutility.h>
 #define __TRACEFILE__
 #endif
 

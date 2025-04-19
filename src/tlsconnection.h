@@ -15,7 +15,7 @@
 #include <ssl.h>
 #include <tlsprovinterface.h> 
 #include <tlstypedef.h>
-#include <comms-infras/statemachine.h>
+#include "statemachine.h"
 #include "LOGFILE.H"
 #include "tlsevents.h"
 

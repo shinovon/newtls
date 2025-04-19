@@ -22,8 +22,8 @@ static TBool psaInitState = EFalse;
 
 #ifdef PIPS
 #include <wchar.h>
-#endif
 #include <stdlib.h>
+#endif
 
 EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aProtocol)
 /**
