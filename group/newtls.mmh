@@ -11,6 +11,7 @@ SMPSAFE
 
 #if defined(SYMBIAN_OE_LIBSTDCPP) && !defined(NO_PIPS)
 #define PIPS
+MACRO PIPS
 #endif
 #endif
 
