@@ -3,4 +3,5 @@ DEFAULT
 
 PRJ_MMPFILES
 newtls.mmp
+newtls_stdlib.mmp
 //newtls93.mmp
