@@ -20,7 +20,9 @@
 static TBool psaInitState = EFalse;
 #endif
 
+#ifdef PIPS
 #include <wchar.h>
+#endif
 #include <stdlib.h>
 
 EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aProtocol)
@@ -660,6 +662,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 		{
 		case KSoSSLDomainName:		
 			{
+#ifdef PIPS
 			if (iMbedContext) {
 				// text conversion
 				HBufC* buf = HBufC::NewL(aOption.Length() + 2);
@@ -677,6 +680,9 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 				delete[] res;
 				delete buf;
 			}
+#else 
+			// TODO
+#endif
 			ret = KErrNone;
 			break;
 			}
