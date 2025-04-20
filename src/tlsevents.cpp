@@ -44,7 +44,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
 //	LOG(Log::Printf(_L("+recv_callback %d"), len));
 	CBio* s = (CBio*) ctx;
-//	LOG(Log::Printf(_L("iReadState: %d"), s->iReadState));
+	LOG(Log::Printf(_L("+recv_callback: %d state: %d"), len, s->iReadState));
 	
 	TPtr8 des = TPtr8(buf, 0, len);
 	
@@ -60,7 +60,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	}
 	
 	if (s->iReadState == 0) {
-		s->iReadLength = len;
+		s->iReadLength = len == 0 ? -1 : (TInt) len;
 		s->iReadState = 2;
 		return MBEDTLS_ERR_SSL_WANT_READ;
 	}
@@ -117,7 +117,13 @@ void CBio::Recv(TRequestStatus& aStatus)
 		User::RequestComplete(pStatus, KErrNone);
 		return;
 	}
-	LOG(Log::Printf(_L("+CBio::Recv %d"), iReadLength));
+	TInt len = iReadLength;
+	if (len == 0) {
+		len = 5;
+	} else if (len == -1) {
+		len = 0;
+	}
+	LOG(Log::Printf(_L("+CBio::Recv %d"), len));
 	
 	if (iReadLength > iDataIn->Des().MaxLength()) {
 		LOG(Log::Printf(_L("Reconstructing input buffer")));
@@ -129,7 +135,7 @@ void CBio::Recv(TRequestStatus& aStatus)
 			return;
 		}
 	}
-	iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, iReadLength ? iReadLength : 5);
+	iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, len);
 	iSocket.Recv(iPtrHBuf, 0, aStatus);
 	iReadState = 1;
 	iReadLength = 0;
