@@ -2,6 +2,6 @@ PRJ_PLATFORMS
 DEFAULT
 
 PRJ_MMPFILES
-newtls.mmp
 newtls_stl.mmp
-//newtls93.mmp
+// comment this line when bulding for platform without PIPS
+newtls.mmp

@@ -11,10 +11,10 @@
 #define _TLSCONNECTION_H_
  
 #include <securesocketinterface.h>
+#ifdef USE_GENERIC_SOCKET
 #include <genericsecuresocket.h>
+#endif
 #include <ssl.h>
-#include <tlsprovinterface.h> 
-#include <tlstypedef.h>
 #include "statemachine.h"
 #include "LOGFILE.H"
 #include "tlsevents.h"
@@ -132,7 +132,12 @@ public:
 	CRecvEvent& RecvEvent();
 	CSendEvent& SendEvent();
 	CHandshakeEvent& HandshakeEvent();
+#ifdef USE_GENERIC_SOCKET
 	MGenericSecureSocket& Socket();
+#else
+	RSocket& Socket();
+#endif
+		
 
 	// Methods from CActive
 	void RunL();
@@ -151,9 +156,12 @@ protected:
 	TDialogMode			iDialogMode;
 	CX509Certificate* iClientCert;
 	CX509Certificate* iServerCert;
-	
+#ifdef USE_GENERIC_SOCKET
 	CGenericSecureSocket<RSocket>* iGenericSocket; // owned
 	MGenericSecureSocket* iSocket;
+#else
+	RSocket* iSocket;
+#endif
 	CMbedContext* iMbedContext;
 	
 	CBio* iBio;
@@ -195,7 +203,13 @@ inline CHandshakeEvent& CTlsConnection::HandshakeEvent()
 	return *iHandshakeEvent;
 }
 
-inline MGenericSecureSocket& CTlsConnection::Socket()
+inline
+#ifdef USE_GENERIC_SOCKET
+	MGenericSecureSocket&
+#else
+	RSocket&
+#endif
+	CTlsConnection::Socket()
 {
 	return *iSocket;
 }

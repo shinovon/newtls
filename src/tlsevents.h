@@ -36,7 +36,11 @@ protected:
 	
 	HBufC8* iDataIn;
 public:
+#ifdef USE_GENERIC_SOCKET
 	MGenericSecureSocket& iSocket;
+#else
+	RSocket& iSocket;
+#endif
 	
 	TPtr8 iPtrHBuf;
 	TInt iReadState;

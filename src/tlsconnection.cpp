@@ -22,8 +22,9 @@ static TBool psaInitState = EFalse;
 
 #ifdef PIPS
 #include <wchar.h>
-#include <stdlib.h>
 #endif
+#include <string.h>
+#include <stdlib.h>
 
 EXPORT_C MSecureSocket* CTlsConnection::NewL(RSocket& aSocket, const TDesC& aProtocol)
 /**
@@ -125,10 +126,12 @@ CTlsConnection::~CTlsConnection()
 		delete iBio;
 		iBio = NULL;
 	}
+#ifdef USE_GENERIC_SOCKET
 	if (iGenericSocket) {
 		delete iGenericSocket;
 		iGenericSocket = NULL;
 	}
+#endif
 	if (iClientCert) {
 		delete iClientCert;
 		iClientCert = NULL;
@@ -173,8 +176,12 @@ void CTlsConnection::ConstructL(RSocket& aSocket, const TDesC& aProtocol)
 	LOG(Log::Printf(_L("CTlsConnection::ConstructL(1)")));
 	CActiveScheduler::Add(this);
 	
+#ifdef USE_GENERIC_SOCKET
 	iGenericSocket = new (ELeave) CGenericSecureSocket<RSocket>(aSocket);
 	iSocket = iGenericSocket;
+#else
+	iSocket = &aSocket;
+#endif
 	
 	Init();
 }
@@ -197,7 +204,11 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
 	LOG(Log::Printf(_L("CTlsConnection::ConstructL(2)")));
 	CActiveScheduler::Add(this);
 
+#ifdef USE_GENERIC_SOCKET
 	iSocket = &aSocket;
+#else
+	iSocket = (RSocket*)&aSocket;
+#endif
 	
 	Init();
 }
@@ -662,7 +673,6 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 		{
 		case KSoSSLDomainName:		
 			{
-#ifdef PIPS
 			if (iMbedContext) {
 				// text conversion
 				HBufC* buf = HBufC::NewL(aOption.Length() + 2);
@@ -680,9 +690,6 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 				delete[] res;
 				delete buf;
 			}
-#else 
-			// TODO
-#endif
 			ret = KErrNone;
 			break;
 			}

@@ -8,10 +8,6 @@ NOEXPORTLIBRARY
 #ifdef EKA2
 EPOCALLOWDLLDATA
 SMPSAFE
-
-#if defined(SYMBIAN_OE_LIBSTDCPP) && !defined(NO_PIPS)
-MACRO PIPS
-#endif
 #endif
 
 #include <comms-infras/commsdebugutility.mmh> 

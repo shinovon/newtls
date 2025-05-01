@@ -1,6 +1,5 @@
 TARGET        ssl_stl.dll
 
-#define NO_PIPS
 #include "newtls.mmh"
 
 LIBRARY mbedtls_stl.lib
