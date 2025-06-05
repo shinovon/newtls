@@ -38,7 +38,6 @@ OPTION ARMCC -O2 -Otime
 
 SYSTEMINCLUDE		/epoc32/include
 SYSTEMINCLUDE		/epoc32/include/platform
-SYSTEMINCLUDE		../../../githubprojects/mbedtls/include
 
 START WINS
     BASEADDRESS 0x54540000
