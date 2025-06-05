@@ -181,6 +181,8 @@ protected:
 	TBool iHandshaked;
 	TBool iDataMode;
 	
+	TBool Busy();
+	
 };
 
 inline CMbedContext& CTlsConnection::MbedContext()
@@ -212,6 +214,11 @@ inline
 	CTlsConnection::Socket()
 {
 	return *iSocket;
+}
+
+inline TBool CTlsConnection::Busy()
+{
+	return iHandshaking || iReceivingData || iSendingData;
 }
 
 #endif

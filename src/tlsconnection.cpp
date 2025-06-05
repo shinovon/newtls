@@ -98,6 +98,7 @@ CTlsConnection::~CTlsConnection()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::~CTlsConnection()")));
+	iDataMode = EFalse;
 	if (iHandshake) {
 		delete iHandshake;
 		iHandshake = NULL;
@@ -290,7 +291,7 @@ void CTlsConnection::CancelRecv()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelRecv()")));
-	if (iSocket && iDataMode) {
+	if (iSocket && (Busy() || iDataMode)) {
 		iSocket->CancelRecv();
 		iSocket->CancelRead();
 	}
@@ -305,7 +306,7 @@ void CTlsConnection::CancelSend()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelSend()")));
-	if (iSocket && iDataMode) {
+	if (iSocket && (Busy() || iDataMode)) {
 		iSocket->CancelSend();
 	}
 	if (iSendData) {
@@ -526,7 +527,7 @@ void CTlsConnection::RenegotiateHandshake(TRequestStatus& aStatus)
 		User::RequestComplete(pStatus, KErrNotReady);
 		return;
 	}
-	if (iHandshaking || iReceivingData || iSendingData) {
+	if (Busy()) {
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
@@ -796,7 +797,7 @@ void CTlsConnection::StartClientHandshake(TRequestStatus& aStatus)
 {
 	LOG(Log::Printf(_L("CTlsConnection::StartClientHandshake()")));
 	TRequestStatus* pStatus = &aStatus;
-	if (iHandshaking || iDataMode || iReceivingData || iSendingData) {
+	if (iDataMode || Busy()) {
 		User::RequestComplete(pStatus, KErrInUse);
 		return;
 	}
@@ -941,6 +942,7 @@ void CTlsConnection::StartClientHandshakeStateMachine(TRequestStatus* aStatus)
 	
 	iHandshake->Resume();
 	iHandshake->Start(aStatus, this);
+	iHandshaking = ETrue;
 }
 
 // not needed since there is no any example of connection reusage
