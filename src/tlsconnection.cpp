@@ -267,12 +267,13 @@ void CTlsConnection::CancelAll()
  * Cancels all outstanding operations. 
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::CancelAll()")));
+	LOG(Log::Printf(_L("+CTlsConnection::CancelAll()")));
 	CancelRecv();
 	CancelSend();
 	if (iHandshake) {
 		iHandshake->Cancel(KErrNone);
 	}
+	LOG(Log::Printf(_L("-CTlsConnection::CancelAll()")));
 }
 
 void CTlsConnection::CancelHandshake()
@@ -351,7 +352,7 @@ void CTlsConnection::Close()
  * and the socket is closed.
  */
 {
-	LOG(Log::Printf(_L("CTlsConnection::Close()")));
+	LOG(Log::Printf(_L("+CTlsConnection::Close()")));
 	CancelAll();
 //	if (iMbedContext) {
 //		iMbedContext->SslCloseNotify();
@@ -359,6 +360,8 @@ void CTlsConnection::Close()
 	if (iSocket) {
 		iSocket->Close();
 	}
+	iDataMode = EFalse;
+	LOG(Log::Printf(_L("-CTlsConnection::Close()")));
 //	Reset();
 }
 
