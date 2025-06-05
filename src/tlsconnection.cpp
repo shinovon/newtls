@@ -290,9 +290,9 @@ void CTlsConnection::CancelRecv()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelRecv()")));
-	if (iSocket) {
-		iSocket->CancelRead();
+	if (iSocket && iDataMode) {
 		iSocket->CancelRecv();
+		iSocket->CancelRead();
 	}
 	if (iRecvData) {
 		iRecvData->Cancel(KErrNone);
@@ -305,7 +305,7 @@ void CTlsConnection::CancelSend()
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::CancelSend()")));
-	if (iSocket) {
+	if (iSocket && iDataMode) {
 		iSocket->CancelSend();
 	}
 	if (iSendData) {
