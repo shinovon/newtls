@@ -60,12 +60,12 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	}
 	
 	if (s->iReadState == 0) {
-		s->iReadLength = len == 0 ? -1 : (TInt) len;
+		s->iReadLength = (TInt) len;
 		s->iReadState = 2;
 		return MBEDTLS_ERR_SSL_WANT_READ;
 	}
 	
-	s->iReadLength = 0;
+	s->iReadLength = -1;
 	
 	TRequestStatus stat;
 	s->iSocket.Recv(des, 0, stat);
@@ -92,6 +92,7 @@ CBio::CBio(CTlsConnection& aTlsConnection) :
   iSocket(aTlsConnection.Socket()),
   iPtrHBuf(0, 0),
   iReadState(0),
+  iReadLength(-1),
   iWriteState(0)
 {
 	aTlsConnection.MbedContext().SetBio(this, (TAny*) send_callback, (TAny*) recv_callback, NULL);
@@ -118,10 +119,8 @@ void CBio::Recv(TRequestStatus& aStatus)
 		return;
 	}
 	TInt len = iReadLength;
-	if (len == 0) {
+	if (len == -1) {
 		len = 5;
-	} else if (len == -1) {
-		len = 0;
 	}
 	LOG(Log::Printf(_L("+CBio::Recv %d"), len));
 	
@@ -138,7 +137,7 @@ void CBio::Recv(TRequestStatus& aStatus)
 	iPtrHBuf.Set((TUint8*)iDataIn->Des().Ptr(), 0, len);
 	iSocket.Recv(iPtrHBuf, 0, aStatus);
 	iReadState = 1;
-	iReadLength = 0;
+	iReadLength = -1;
 	LOG(Log::Printf(_L("-CBio::Recv")));
 }
 
