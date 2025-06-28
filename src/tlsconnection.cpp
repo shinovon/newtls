@@ -582,8 +582,7 @@ const CX509Certificate* CTlsConnection::ServerCert()
  */ 
 {
 	LOG(Log::Printf(_L("CTlsConnection::ServerCert()")));
-	// TODO server certificate parsing
-	return NULL;
+	return iServerCert;
 }
 
 TInt CTlsConnection::SetAvailableCipherSuites(const TDesC8& aCiphers)

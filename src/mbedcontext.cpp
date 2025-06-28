@@ -74,6 +74,17 @@ TInt CMbedContext::Renegotiate()
 	return mbedtls_ssl_renegotiate(&ssl);
 }
 
+TInt CMbedContext::GetPeerCert(TUint8*& aData, TInt& aLen) {
+	const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&ssl);
+	if (!cert) {
+		return -1;
+	}
+	aData = cert->raw.p;
+	aLen = cert->raw.len;
+	
+	return 0;
+}
+
 //TInt CMbedContext::ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen) {
 //    mbedtls_ssl_session exported_session;
 //    mbedtls_ssl_session_init(&exported_session);

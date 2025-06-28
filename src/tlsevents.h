@@ -36,6 +36,7 @@ protected:
 	
 	HBufC8* iDataIn;
 public:
+	CTlsConnection& iTlsConnection;
 #ifdef USE_GENERIC_SOCKET
 	MGenericSecureSocket& iSocket;
 #else

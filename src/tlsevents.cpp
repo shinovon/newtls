@@ -89,6 +89,7 @@ CBio* CBio::NewL(CTlsConnection& aTlsConnection)
 }
 
 CBio::CBio(CTlsConnection& aTlsConnection) :
+  iTlsConnection(aTlsConnection),
   iSocket(aTlsConnection.Socket()),
   iPtrHBuf(0, 0),
   iReadState(0),
@@ -603,6 +604,13 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 	if (res != 0) {
 		ret = KErrSSLAlertHandshakeFailure;
 		LOG(Log::Printf(_L("CHandshakeEvent::ProcessL() Err %x"), -res));
+	} else {
+		TUint8* data;
+		TInt len;
+		res = iMbedContext.GetPeerCert(data, len);
+		TRAP_IGNORE(
+			iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
+		);
 	}
 	iHandshaked = ETrue;
 	User::RequestComplete(pStatus, ret);

@@ -26,6 +26,7 @@ LIBRARY		euser.lib
 LIBRARY		esock.lib
 LIBRARY		insock.lib
 LIBRARY		netsm.lib
+LIBRARY		x509.lib
 
 OPTION CW -wchar_t on
 #if defined(ARMCC_4_0)

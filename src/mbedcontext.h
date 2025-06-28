@@ -28,6 +28,7 @@ public:
 	
 	TInt InitSsl();
 
+	// mbedtls_ssl_set_hostname
 	void SetHostname(const char* aHostname);
 	
 	// mbedtls_ssl_handshake
@@ -35,6 +36,9 @@ public:
 	
 	// mbedtls_ssl_renegotiate
 	TInt Renegotiate();
+	
+	// mbedtls_ssl_get_peer_cert
+	TInt GetPeerCert(TUint8*& aData, TInt& aLen);
 	
 //	TInt ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen);
 //	TInt LoadSession(const unsigned char *aData, TInt aLen);

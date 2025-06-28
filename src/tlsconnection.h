@@ -152,7 +152,7 @@ protected:
 	
 	void Init();
 //	void Reset();
-protected:
+public:
 	TDialogMode			iDialogMode;
 	CX509Certificate* iClientCert;
 	CX509Certificate* iServerCert;
