@@ -948,7 +948,6 @@ void CTlsConnection::StartClientHandshakeStateMachine(TRequestStatus* aStatus)
 	iHandshaking = ETrue;
 }
 
-// not needed since there is no any example of connection reusage
 //void CTlsConnection::Reset() {
 //	if (iMbedContext) {
 //		iMbedContext->Reset();

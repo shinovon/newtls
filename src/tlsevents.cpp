@@ -121,11 +121,13 @@ void CBio::Recv(TRequestStatus& aStatus)
 	}
 	TInt len = iReadLength;
 	if (len == -1) {
+		// default to header size
 		len = 5;
 	}
 	LOG(Log::Printf(_L("+CBio::Recv %d"), len));
 	
 	if (iReadLength > iDataIn->Des().MaxLength()) {
+		// grow buffer
 		LOG(Log::Printf(_L("Reconstructing input buffer")));
 		delete iDataIn;
 		iDataIn = NULL;
@@ -318,6 +320,8 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 		return this;
 	}
 	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
+		// this return code is specific mbedtls 3.4.1 version
+		// TODO: handle it?
 		LOG(Log::Printf(_L("Ticket received on read")));
 		User::RequestComplete(pStatus, KErrNone);
 		return this;
@@ -633,7 +637,7 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 			res = iMbedContext.Verify();
 			LOG(Log::Printf(_L("Verify result: %d"), res));
 			if (res == 0) {
-				// verify succeed, do nothing
+				// verify successful, do nothing
 			} else if (res == -1u || len == -1) {
 				// mbedtls returned fatal error
 				ret = KErrSSLAlertBadCertificate;
@@ -645,7 +649,7 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 				iSecurityDialog = SecurityDialogFactory::CreateL();
 				// TODO: this automatically cancels if certificate type is not supported by system
 				iSecurityDialog->ServerAuthenticationFailure(TPtrC8(iMbedContext.Hostname()), ENotCACert, TPtrC8(data, len), aStatus);
-				if (data) User::Free(data);
+				if (data) User::Free(data); // i hope that function called above copies it
 				return this;
 			}
 		}
