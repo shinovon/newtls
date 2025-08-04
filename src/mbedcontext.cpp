@@ -98,16 +98,16 @@ TInt CMbedContext::Renegotiate()
 	return mbedtls_ssl_renegotiate(&ssl);
 }
 
-TInt CMbedContext::GetPeerCert(TUint8*& aData, TInt& aLen) {
-	// TODO leak?
+TInt CMbedContext::GetPeerCert(TUint8*& aData) {
 	const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&ssl);
 	if (!cert) {
 		return -1;
 	}
-	aData = cert->raw.p;
-	aLen = cert->raw.len;
+	size_t len = cert->raw.len;
+	aData = (TUint8*) User::Alloc(len);
+	memcpy(aData, cert->raw.p, len);
 	
-	return 0;
+	return len;
 }
 
 TInt CMbedContext::Verify()

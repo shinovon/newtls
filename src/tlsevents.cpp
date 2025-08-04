@@ -622,18 +622,19 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 		LOG(Log::Printf(_L("CHandshakeEvent::ProcessL() Err %x"), -res));
 	} else {
 		TUint8* data;
-		TInt len;
-		res = iMbedContext.GetPeerCert(data, len);
-		TRAP_IGNORE(
-			iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
-		);
+		TInt len = iMbedContext.GetPeerCert(data);
+		if (len != -1) {
+			TRAP_IGNORE(
+				iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
+			);
+		}
 #ifndef NO_VERIFY
 		if (iBio.iTlsConnection.iDialogMode == EDialogModeAttended) {
 			res = iMbedContext.Verify();
 			LOG(Log::Printf(_L("Verify result: %d"), res));
 			if (res == 0) {
 				// verify succeed, do nothing
-			} else if (res == -1u) {
+			} else if (res == -1u || len == -1) {
 				// mbedtls returned fatal error
 				ret = KErrSSLAlertBadCertificate;
 			} else if (iMbedContext.Hostname() == NULL) {
@@ -644,10 +645,12 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 				iSecurityDialog = SecurityDialogFactory::CreateL();
 				// TODO: this automatically cancels if certificate type is not supported by system
 				iSecurityDialog->ServerAuthenticationFailure(TPtrC8(iMbedContext.Hostname()), ENotCACert, TPtrC8(data, len), aStatus);
+				if (data) User::Free(data);
 				return this;
 			}
 		}
 #endif
+		if (data) User::Free(data);
 	}
 	iHandshaked = ETrue;
 	User::RequestComplete(pStatus, ret);

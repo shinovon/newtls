@@ -40,7 +40,7 @@ public:
 	TInt Renegotiate();
 	
 	// mbedtls_ssl_get_peer_cert
-	TInt GetPeerCert(TUint8*& aData, TInt& aLen);
+	TInt GetPeerCert(TUint8*& aData);
 	
 	// mbedtls_ssl_get_verify_result
 	TInt Verify();
