@@ -541,7 +541,7 @@ void CHandshake::Resume()
 
 void CHandshake::OnCompletion()
 {
-	LOG(Log::Printf(_L("CHandshake::OnCompletion()")));
+	LOG(Log::Printf(_L("CHandshake::OnCompletion(): %d"), iLastError));
 	
 	if (iStatus.Int() == KRequestPending) {
 		TRequestStatus* p = &iStatus;
@@ -571,10 +571,20 @@ CHandshakeEvent::CHandshakeEvent(CMbedContext& aMbedContext, CBio& aBio) :
 CHandshakeEvent::~CHandshakeEvent()
 {
 	LOG(Log::Printf(_L("CHandshakeEvent::~CHandshakeEvent()")));
+#ifndef NO_VERIFY
+	if (iSecurityDialog) {
+		iSecurityDialog->Release();
+	}
+#endif
 }
 
 void CHandshakeEvent::CancelAll()
 {
+#ifndef NO_VERIFY
+	if (iSecurityDialog) {
+		iSecurityDialog->Cancel();
+	}
+#endif
 }
 
 CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
@@ -583,6 +593,12 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 	TRequestStatus* pStatus = &aStatus;
 	if (iStateMachine->LastError() != KErrNone) {
 		User::RequestComplete(pStatus, iStateMachine->LastError());
+		return NULL;
+	}
+	if (iInDialog) {
+		iHandshaked = ETrue;
+		LOG(Log::Printf(_L("Dialog complete")));
+		User::RequestComplete(pStatus, KErrNone);
 		return NULL;
 	}
 	TInt res = iHandshaked ? iMbedContext.Renegotiate() : iMbedContext.Handshake();
@@ -611,6 +627,27 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 		TRAP_IGNORE(
 			iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
 		);
+#ifndef NO_VERIFY
+		if (iBio.iTlsConnection.iDialogMode == EDialogModeAttended) {
+			res = iMbedContext.Verify();
+			LOG(Log::Printf(_L("Verify result: %d"), res));
+			if (res == 0) {
+				// verify succeed, do nothing
+			} else if (res == -1u) {
+				// mbedtls returned fatal error
+				ret = KErrSSLAlertBadCertificate;
+			} else if (iMbedContext.Hostname() == NULL) {
+				// no hostname set??
+				ret = KErrSSLAlertIllegalParameter;
+			} else {
+				iInDialog = ETrue;
+				iSecurityDialog = SecurityDialogFactory::CreateL();
+				// TODO: this automatically cancels if certificate type is not supported by system
+				iSecurityDialog->ServerAuthenticationFailure(TPtrC8(iMbedContext.Hostname()), ENotCACert, TPtrC8(data, len), aStatus);
+				return this;
+			}
+		}
+#endif
 	}
 	iHandshaked = ETrue;
 	User::RequestComplete(pStatus, ret);

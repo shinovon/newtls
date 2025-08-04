@@ -652,6 +652,7 @@ TInt CTlsConnection::SetDialogMode(const TDialogMode aDialogMode)
  */
 {
 	LOG(Log::Printf(_L("CTlsConnection::SetDialogMode()")));
+	iDialogMode = aDialogMode;
 	return KErrNone;
 }
 
@@ -690,7 +691,7 @@ TInt CTlsConnection::SetOpt(TUint aOptionName,TUint aOptionLevel, const TDesC8& 
 				wcstombs(res, w, size);
 					
 				iMbedContext->SetHostname(res);
-				delete[] res;
+//				delete[] res; // result is now held in mbed context
 				delete buf;
 			}
 			ret = KErrNone;

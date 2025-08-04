@@ -3,6 +3,7 @@
  */
 
 #include "mbedcontext.h"
+#include "LOGFILE.h"
 
 CMbedContext::CMbedContext()
 {
@@ -10,6 +11,7 @@ CMbedContext::CMbedContext()
 	mbedtls_ssl_config_init(&conf);
 	mbedtls_ctr_drbg_init(&ctr_drbg);
 	mbedtls_entropy_init(&entropy);
+	hostname = NULL;
 }
 
 CMbedContext::~CMbedContext()
@@ -18,6 +20,11 @@ CMbedContext::~CMbedContext()
 	mbedtls_ssl_config_free(&conf);
 	mbedtls_ctr_drbg_free(&ctr_drbg);
 	mbedtls_entropy_free(&entropy);
+	mbedtls_x509_crt_free(&cacert);
+	if (hostname != NULL) {
+		delete[] hostname;
+		hostname = NULL;
+	}
 }
 
 void CMbedContext::SetBio(TAny* aContext, TAny* aSend, TAny* aRecv, TAny* aTimeout)
@@ -46,7 +53,23 @@ TInt CMbedContext::InitSsl()
 	}
 	
 	
+#ifdef NO_VERIFY
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+#else
+	{
+		mbedtls_x509_crt_init(&cacert);
+		if ((ret = mbedtls_x509_crt_parse_path(&cacert, "C:/resource/mbedtls/cacerts/")) < 0) {
+			LOG(Log::Printf(_L("crt parse error %x"), -ret));
+			mbedtls_x509_crt_free(&cacert);
+			// no cacerts dir, ignore?
+//			goto exit;
+			mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+		} else {
+			mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+			mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+		}
+	}
+#endif
 	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
 	mbedtls_ssl_conf_session_tickets(&conf, 0);
 	mbedtls_ssl_conf_renegotiation(&conf, 0);
@@ -61,6 +84,7 @@ TInt CMbedContext::InitSsl()
 
 void CMbedContext::SetHostname(const char* aHostname)
 {
+	hostname = aHostname;
 	mbedtls_ssl_set_hostname(&ssl, aHostname);
 }
 
@@ -75,6 +99,7 @@ TInt CMbedContext::Renegotiate()
 }
 
 TInt CMbedContext::GetPeerCert(TUint8*& aData, TInt& aLen) {
+	// TODO leak?
 	const mbedtls_x509_crt* cert = mbedtls_ssl_get_peer_cert(&ssl);
 	if (!cert) {
 		return -1;
@@ -83,6 +108,11 @@ TInt CMbedContext::GetPeerCert(TUint8*& aData, TInt& aLen) {
 	aLen = cert->raw.len;
 	
 	return 0;
+}
+
+TInt CMbedContext::Verify()
+{
+	return mbedtls_ssl_get_verify_result(&ssl);
 }
 
 //TInt CMbedContext::ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen) {
@@ -122,4 +152,8 @@ TInt CMbedContext::SslCloseNotify()
 
 TInt CMbedContext::Reset() {
 	return mbedtls_ssl_session_reset(&ssl);
+}
+
+const TUint8* CMbedContext::Hostname() {
+	return (const TUint8*) hostname;
 }

@@ -8,6 +8,9 @@
 
 #include "statemachine.h"
 #include "asynchevent.h"
+#ifndef NO_VERIFY
+#include <secdlg.h>
+#endif
 
 class MGenericSecureSocket;
 class RSocket;
@@ -274,7 +277,8 @@ public:
 protected:
 	CMbedContext& iMbedContext;
 	CBio& iBio;
-	
+	MSecurityDialog* iSecurityDialog;
+	TBool iInDialog;
 	TBool iHandshaked;
 };
 

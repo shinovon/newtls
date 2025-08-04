@@ -15,6 +15,7 @@
 
 #include <e32std.h>
 #include <e32base.h>
+#include <e32debug.h>
 #include "LOGFILE.H"
 
 #ifdef __TRACEFILE__
@@ -38,6 +39,7 @@ void Log::Printf(TRefByValue<const TDesC> aFmt, ...)
     //coverity[uninit_use_in_call];
     buf.FormatList(aFmt, list);
 	Write(buf);
+	RDebug::RawPrint(buf);
 	}
 
 

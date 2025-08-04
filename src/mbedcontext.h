@@ -21,6 +21,8 @@ protected:
 	mbedtls_ssl_config conf;
 	mbedtls_ctr_drbg_context ctr_drbg;
 	mbedtls_entropy_context entropy;
+	mbedtls_x509_crt cacert;
+	const char* hostname; // owned
 
 public:
 	// mbedtls_ssl_set_bio
@@ -40,6 +42,9 @@ public:
 	// mbedtls_ssl_get_peer_cert
 	TInt GetPeerCert(TUint8*& aData, TInt& aLen);
 	
+	// mbedtls_ssl_get_verify_result
+	TInt Verify();
+	
 //	TInt ExportSession(unsigned char *aData, TInt aMaxLen, TUint* aLen);
 //	TInt LoadSession(const unsigned char *aData, TInt aLen);
 	
@@ -54,5 +59,7 @@ public:
 	
 	// mbedtls_ssl_session_reset
 	TInt Reset();
+	
+	const TUint8* Hostname();
 };
 #endif
