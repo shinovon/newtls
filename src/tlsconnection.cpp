@@ -230,7 +230,7 @@ inline void CTlsConnection::Init()
 	iHandshakeEvent = new (ELeave) CHandshakeEvent(*iMbedContext, *iBio);
 	iHandshake = CHandshake::NewL(*this);
 
-	iDialogMode = EDialogModeUnattended;
+	iDialogMode = EDialogModeAttended;
 }
 
 void CTlsConnection::RunL()
