@@ -627,9 +627,11 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 	} else {
 		TUint8* data;
 		TInt len = iMbedContext.GetPeerCert(data);
+		TBool supportedCert = EFalse;
 		if (len != -1) {
 			TRAP_IGNORE(
 				iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
+				supportedCert = ETrue;
 			);
 		}
 #ifndef NO_VERIFY
@@ -640,14 +642,16 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 				// verify successful, do nothing
 			} else if (res == -1u || len == -1) {
 				// mbedtls returned fatal error
-				ret = KErrSSLAlertBadCertificate;
+				ret = KErrSSLInvalidCert;
 			} else if (iMbedContext.Hostname() == NULL) {
 				// no hostname set??
-				ret = KErrSSLAlertIllegalParameter;
+				ret = KErrSSLInvalidCert;
+			} else if (!supportedCert) {
+				// TODO: custom security dialog?
+				ret = KErrSSLInvalidCert;
 			} else {
 				iInDialog = ETrue;
 				iSecurityDialog = SecurityDialogFactory::CreateL();
-				// TODO: this automatically cancels if certificate type is not supported by system
 				iSecurityDialog->ServerAuthenticationFailure(TPtrC8(iMbedContext.Hostname()), ENotCACert, TPtrC8(data, len), aStatus);
 				if (data) User::Free(data); // i hope that function called above copies it
 				return this;
