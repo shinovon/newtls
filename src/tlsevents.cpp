@@ -625,7 +625,7 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 		ret = KErrSSLAlertHandshakeFailure;
 		LOG(Log::Printf(_L("CHandshakeEvent::ProcessL() Err %x"), -res));
 	} else {
-		TUint8* data;
+		TUint8* data = 0;
 		TInt len = iMbedContext.GetPeerCert(data);
 		TBool supportedCert = EFalse;
 		if (len != -1) {
