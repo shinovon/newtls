@@ -1,0 +1,12 @@
+&EN
+
+#{"SSL"},(0x20292B6C),1,0,15, TYPE=SA, RU
+
+[0x101F7961], 0, 0, 0, {"S60ProductID"}
+[0x1028315F], 0, 0, 0, {"S60ProductID"}
+[0x20022E6D], 0, 0, 0, {"S60ProductID"}
+
+%{"nnproject"}
+:"nnproject"
+
+"$(EPOCROOT)Epoc32\release\$(PLATFORM)\$(TARGET)\ssl.dll"-"c:\sys\bin\ssl.dll"
