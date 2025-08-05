@@ -216,6 +216,7 @@ void CTlsConnection::ConstructL(MGenericSecureSocket& aSocket, const TDesC& aPro
 
 inline void CTlsConnection::Init()
 {
+	// TODO check for error
 	iMbedContext = new CMbedContext();
 	iMbedContext->InitSsl();
 	

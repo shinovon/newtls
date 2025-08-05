@@ -56,19 +56,17 @@ TInt CMbedContext::InitSsl()
 #ifdef NO_VERIFY
 	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
 #else
-	{
-		mbedtls_x509_crt_init(&cacert);
-		if ((ret = mbedtls_x509_crt_parse_path(&cacert, "C:/resource/mbedtls/cacerts/")) < 0) {
-			LOG(Log::Printf(_L("crt parse error %x"), -ret));
-			mbedtls_x509_crt_free(&cacert);
-			// no cacerts dir, ignore?
-//			goto exit;
-			mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
-		} else {
-			mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
-			mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-		}
+	mbedtls_x509_crt_init(&cacert);
+	if ((ret = mbedtls_x509_crt_parse_path(&cacert, "C:/resource/mbedtls/cacerts/")) < 0) {
+		// no cacerts dir, ignore?
+		mbedtls_x509_crt_free(&cacert);
+		mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+//		goto exit;
+	} else {
+		mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
+		mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
 	}
+	LOG(Log::Printf(_L("crt parse %x"), ret));
 #endif
 	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
 	mbedtls_ssl_conf_session_tickets(&conf, 0);
