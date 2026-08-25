@@ -31,9 +31,9 @@ Installation instructions, downloads and updates are available on the [webpage](
 
 ## Building
 
-For EKA2 version, use Carbide.c++ v2.7/3.2, Symbian^3 SDK, RVCT 2.2.
+For EKA2 version, use Carbide.c++ v2.7/3.2, Symbian^3 SDK, RVCT 2.2. build mbedtls first.
 
-For EKA1 version, use Carbide.c++ v2.7 and S60 2nd FP3 CW SDK with bundled gcc.
+For EKA1 version, use Carbide.c++ v2.7 and S60 2nd FP3 CW SDK with bundled gcc. build bearssl first.
 
 bld.inf uses macros, so it will automatically select suitable mmps for selected sdk.
 
