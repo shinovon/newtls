@@ -29,7 +29,7 @@ Unknown (theoretically should be supported, but no one tested):
 
 ## State
 
-On 9.1+ (EKA2), implementation uses dynamically linked [MBedTLS library port](https://github.com/shinovon/mbedtls-symbian), it supports TLS 1.2 or 1.2/1.3 in client mode only.
+On 9.1+ (EKA2), implementation uses dynamically linked [MBedTLS library port](https://github.com/shinovon/mbedtls-symbian), it supports TLS 1.2 or 1.2/1.3, in client mode only.
 
 Current limitations:
 - No session or tickets support, each connection starts new handshake which is slow.
