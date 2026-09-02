@@ -34,7 +34,7 @@ On 9.1+ (EKA2), implementation uses dynamically linked [MBedTLS library port](ht
 Current limitations:
 - No session or tickets support, each connection starts new handshake which is slow.
 - CA certificates storage is not integrated with system, it has to be managed manually in resource path.
-- This patch does not update certificates support in system, warnings involving certificates with newer algorithms will fail connection without security prompt.
+- This patch does not update certificates support in system, warnings involving unsupported certificates will show stub certificate details instead.
 
 On 7.0s and 8.1a (EKA1), implementation uses statically linked [BearSSL library port](https://github.com/shinovon/bearssl-symbian), it only supports minimum basic TLS 1.2 without certificate verification.
 

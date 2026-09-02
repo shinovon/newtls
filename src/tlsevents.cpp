@@ -32,6 +32,7 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 		LOG(Log::Printf(_L("-send_callback WANT_WRITE %d"), len));
 		return MBEDTLS_ERR_SSL_WANT_WRITE;
 	}
+	// fallback to blocking io, something is wrong if it reaches here
 	s->iWriteState = 0;
 	
 	const TPtrC8 des((const TUint8*) buf, len);
@@ -48,13 +49,12 @@ LOCAL_C int send_callback(void *ctx, const unsigned char *buf, size_t len)
 	User::WaitForRequest(stat);
 	
 	TInt ret = stat.Int() != KErrNone ? stat.Int() : len;
-	LOG(Log::Printf(_L("-send_callback SYNC %d (%d)"), ret, stat.Int()));
+	LOG(Log::Printf(_L("-send_callback BLOCKING %d (%d)"), ret, stat.Int()));
 	return ret;
 }
 
 LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 {
-//	LOG(Log::Printf(_L("+recv_callback %d"), len));
 	CBio* s = (CBio*) ctx;
 	LOG(Log::Printf(_L("+recv_callback: %d state: %d"), len, s->iReadState));
 	
@@ -74,14 +74,13 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 		LOG(Log::Printf(_L("-recv_callback %d"), s->iPtrHBuf.Length()));
 		return s->iPtrHBuf.Length();
 	}
-	
 	if (s->iReadState == 0) {
 		s->iReadLength = (TInt) len;
 		s->iReadState = 2;
 		LOG(Log::Printf(_L("-recv_callback WANT_READ %d"), len));
 		return MBEDTLS_ERR_SSL_WANT_READ;
 	}
-	
+	// fallback to blocking io, something is wrong if it reaches here
 	s->iReadLength = -1;
 	
 	TRequestStatus stat;
@@ -97,7 +96,7 @@ LOCAL_C int recv_callback(void *ctx, unsigned char *buf, size_t len)
 	
 	TInt ret = stat.Int() != KErrNone ? stat.Int() : des.Length();
 	if (ret == KErrEof) ret = 0;
-	LOG(Log::Printf(_L("-recv_callback SYNC %d (%d)"), ret, stat.Int()));
+	LOG(Log::Printf(_L("-recv_callback BLOCKING %d (%d)"), ret, stat.Int()));
 	return ret;
 }
 
