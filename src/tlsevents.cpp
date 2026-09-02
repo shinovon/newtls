@@ -7,6 +7,7 @@
 #include "mbedcontext.h"
 #include "LOGFILE.h"
 #include "tlsconnection.h"
+#include "stub_cert.h"
 
 // callbacks for mbedtls
 
@@ -752,6 +753,9 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 				iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(data, len));
 				supportedCert = ETrue;
 			);
+			if (!supportedCert) {
+				iBio.iTlsConnection.iServerCert = CX509Certificate::NewL(TPtrC8(stub_der, stub_der_len));
+			}
 		}
 #ifndef NO_VERIFY
 		res = iMbedContext.Verify();
@@ -765,9 +769,6 @@ CAsynchEvent* CHandshakeEvent::ProcessL(TRequestStatus& aStatus)
 			// no hostname set??
 			ret = KErrSSLInvalidCert;
 		} else if (iBio.iTlsConnection.iDialogMode == EDialogModeUnattended) {
-			ret = KErrSSLInvalidCert;
-		} else if (!supportedCert) {
-			// TODO: custom security dialog?
 			ret = KErrSSLInvalidCert;
 		} else {
 			iInDialog = ETrue;
