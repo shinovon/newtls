@@ -154,7 +154,7 @@ void CBio::Recv(TRequestStatus* aStatus)
 	
 	if (iReadLength > iDataIn->Des().MaxLength()) {
 		// grow buffer
-		LOG(Log::Printf(_L("Reconstructing input buffer")));
+		LOG(Log::Printf(_L("Growing input buffer")));
 		// TODO: use realloc?
 //		iDataIn->ReAllocL(iReadLength);
 		delete iDataIn;
@@ -273,8 +273,7 @@ void CRecvData::OnCompletion()
 			if (iSockXfrLength && pData->Length()) {
 				LOG(Log::Printf(_L("xfr set %d"), pData->Length()));
 				*iSockXfrLength = pData->Length();
-			}
-			else if (pData->Length() < pData->MaxLength()) {
+			} else if (pData->Length() < pData->MaxLength()) {
 				LOG(Log::Printf(_L("Recvdata repeat %d / %d"), pData->Length(), pData->MaxLength()));
 				iActiveEvent = &iRecvEvent;
 				Start(iClientStatus, iStateMachineNotify);
@@ -410,7 +409,7 @@ CAsynchEvent* CRecvEvent::ProcessL(TRequestStatus& aStatus)
 	if (res == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET) {
 		// this return code is specific mbedtls 3.4.1 version
 		// TODO: handle it?
-		LOG(Log::Printf(_L("Ticket received on read")));
+		LOG(Log::Printf(_L("Ticket received")));
 		User::RequestComplete(pStatus, KErrNone);
 		return this;
 	}

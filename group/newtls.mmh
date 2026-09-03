@@ -5,7 +5,8 @@ UID 0x1000183d 0x10001842
 EPOCALLOWDLLDATA
 CAPABILITY ALL -Tcb
 VENDORID 0x70000001
-SMPSAFE
+//SMPSAFE
+//UNPAGED
 #endif
 
 SOURCEPATH	../src
@@ -27,7 +28,7 @@ LIBRARY x509.lib
 LIBRARY ctframework.lib
 #endif
 
-OPTION CW -lang c99 -undefine _WIN32 -relax_pointers
+OPTION CW -undefine _WIN32 -relax_pointers
 #if defined(ARMCC_4_0)
 OPTION ARMCC --import_all_vtbl
 #endif
@@ -42,7 +43,6 @@ SYSTEMINCLUDE /epoc32/include/mbedtls
 SYSTEMINCLUDE /epoc32/include/psa
 SYSTEMINCLUDE /epoc32/include/platform
 
-UNPAGED
 #endif
 
 START WINS
