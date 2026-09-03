@@ -40,9 +40,9 @@ On 7.0s and 8.1a (EKA1), implementation uses statically linked [BearSSL library 
 
 ## Building
 
-For EKA2 version, use Carbide.c++ v2.7/3.2, Symbian^3 SDK, RVCT 2.2. Build mbedtls first, uncheck newtls_static.mmp and ssl_bearssl.mmp when importing project.
+For EKA2 version, use Carbide.c++ v2.7/3.2, Symbian^3 SDK, RVCT 2.2 build 686. Build mbedtls first, uncheck newtls_static.mmp and ssl_bearssl.mmp when importing project.
 
-For EKA1 version, use Carbide.c++ v2.7 and S60 2nd CW SDK (or any FPs) with bundled gcc (even for S80, only GT APIs are used). Build bearssl first.
+For EKA1 version, use Carbide.c++ v2.7 and S60 2nd CW SDK (or any FPs, I use Series60_v21_CW. even for S80, only GT APIs are used) with bundled gcc. Build bearssl first.
 
 bld.inf uses macros, so it will automatically select suitable MMPs for selected SDK.
 
