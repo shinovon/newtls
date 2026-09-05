@@ -7,7 +7,7 @@ NOEXPORTLIBRARY
 LIBRARY mbedtls.lib
 
 LIBRARY estlib.lib
-SYSTEMINCLUDE		/epoc32/include/libc
+SYSTEMINCLUDE \epoc32\include\libc
 
 //#if !defined(__WINSCW__) && defined(EKA2)
 MACRO USE_GENERIC_SOCKET

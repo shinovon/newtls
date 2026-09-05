@@ -10,7 +10,7 @@
 #include "asynchevent.h"
 #include "es_sock.h"
 #ifndef NO_VERIFY
-#include <secdlg.h>
+#include "secdlg.h"
 #endif
 
 class MGenericSecureSocket;
