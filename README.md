@@ -17,15 +17,15 @@ Supported software platforms:
 - S80 2nd Edition (9500/9300, 7.0s)
 - S90 (7700/7710, 7.0s)
 
+Unknown (theoretically should be supported, but no one tested):
+- UIQ2 (7.0)
+
 NOT supported:
 
 - S60 2nd Edition FP2 (6630/6680, 8.0a) - should work but doesn't, no idea why.
 - S60 1st Edition (6.1)
 - S80 1st Edition (6.0)
 - Anything earlier
-
-Unknown (theoretically should be supported, but no one tested):
-- UIQ2 (7.0s)
 
 ## State
 
